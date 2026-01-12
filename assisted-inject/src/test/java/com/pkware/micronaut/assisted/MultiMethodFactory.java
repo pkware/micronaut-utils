@@ -5,6 +5,7 @@ import io.micronaut.aop.Introduction;
 @Introduction
 @Assisted
 public interface MultiMethodFactory {
-    TypeAProduct createTypeA(String value);
-    TypeBProduct createTypeB(int number);
+  TypeAProduct createTypeA(String value);
+
+  TypeBProduct createTypeB(int number);
 }

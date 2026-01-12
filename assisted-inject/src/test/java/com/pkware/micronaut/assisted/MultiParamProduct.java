@@ -5,7 +5,8 @@ import io.micronaut.context.annotation.Prototype;
 
 @Prototype
 public record MultiParamProduct(
-        @Parameter String stringParam,
-        @Parameter int intParam,
-        @Parameter boolean boolParam
-) {}
+  @Parameter String stringParam,
+  @Parameter int intParam,
+  @Parameter boolean boolParam
+) {
+}
