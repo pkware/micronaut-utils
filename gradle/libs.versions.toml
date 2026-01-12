@@ -1,0 +1,20 @@
+[versions]
+junit = "5.14.2"
+ktlint = "1.5.0"
+# DO NOT DELETE - Used by the Micronaut Gradle plugin.
+micronaut = "4.10.7"
+# Also set in settings.gradle.kts
+micronautPlugin = "4.6.1"
+
+[libraries]
+assertk = "com.willowtreeapps.assertk:assertk:0.28.1"
+jspecify = "org.jspecify:jspecify:1.0.0"
+junit-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit" }
+
+[plugins]
+kotlin-allOpen = { id = "org.jetbrains.kotlin.plugin.allopen", version = "2.2.21" }
+ksp = "com.google.devtools.ksp:2.2.21-2.0.4"
+micronaut-aot = { id = "io.micronaut.aot", version.ref = "micronautPlugin" }
+micronaut-library = { id = "io.micronaut.library", version.ref = "micronautPlugin" }
+
+[bundles]
