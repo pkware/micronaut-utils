@@ -37,3 +37,12 @@ dependencies {
 ## License
 
 [MIT](LICENSE) — PKWARE, Inc.
+
+## Releasing
+
+1. Change the relevant version in `gradle.properties` to a non-SNAPSHOT version.
+2. `git commit -am "Release version X.Y.Z."` (where and X.Y.Z is the new version)
+3. Update `gradle.properties` to the next SNAPSHOT version.
+4. `git commit -am "Prepare next development version."`
+5. After the merge, tag the release commit on the main branch. `git tag -a X.Y.Z -m "Version X.Y.Z"` (where X.Y.Z is the new version)
+6. `git push --tags`.
