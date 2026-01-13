@@ -128,9 +128,9 @@ val Project.signingPassword: String
 val Project.pomPackaging: String
   get() = properties.getOrDefault("POM_PACKAGING", "jar").toString()
 
-val Project.pomName: String?
-  get() = properties["POM_NAME"]?.toString()
+val Project.pomName: String
+  get() = properties.getOrDefault("POM_NAME", name).toString()
 
-val Project.pomDescription: String?
-  get() = properties["POM_DESCRIPTION"]?.toString()
+val Project.pomDescription: String
+  get() = properties.getOrDefault("POM_NAME", name).toString()
 
