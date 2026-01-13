@@ -8,10 +8,10 @@ micronautPlugin = "4.6.1"
 
 [libraries]
 assertk = "com.willowtreeapps.assertk:assertk:0.28.1"
+detekt-imports = "com.pkware.detekt:import-extension:1.2.0"
 jspecify = "org.jspecify:jspecify:1.0.0"
 junit-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit" }
 moshi = "com.squareup.moshi:moshi:1.15.2"
-detekt-imports = "com.pkware.detekt:import-extension:1.2.0"
 
 [plugins]
 kotlin-allOpen = { id = "org.jetbrains.kotlin.plugin.allopen", version = "2.2.21" }
