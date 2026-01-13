@@ -45,4 +45,4 @@ jobs:
             --max-time 30 \
             --fail-with-body \
             -H "Authorization: Bearer $token" \
-            "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/com.pkware.norm?publishing_type=automatic"
+            "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/com.pkware.micronaut-utils?publishing_type=automatic"

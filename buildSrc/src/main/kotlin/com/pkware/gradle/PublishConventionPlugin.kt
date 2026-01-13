@@ -71,7 +71,8 @@ class PublishConventionPlugin : Plugin<Project> {
       }
     }
 
-    if (version.toString().isReleaseBuild) {
+    val isCiServer = System.getenv().containsKey("CI")
+    if (isCiServer) {
       pluginManager.apply(SigningPlugin::class.java)
       configure<SigningExtension> {
         // Signing credentials are stored as secrets in GitHub.
@@ -132,7 +133,4 @@ val Project.pomName: String?
 
 val Project.pomDescription: String?
   get() = properties["POM_DESCRIPTION"]?.toString()
-
-val Project.pomArtifactId
-  get() = properties.getOrDefault("POM_ARTIFACT_ID", name).toString()
 
