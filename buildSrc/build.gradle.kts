@@ -26,6 +26,6 @@ repositories {
 
 dependencies {
   implementation(kotlin("gradle-plugin"))
-  implementation("com.diffplug.spotless:spotless-plugin-gradle:8.1.0")
+  implementation("com.diffplug.spotless:spotless-plugin-gradle:8.2.1")
   implementation("io.gitlab.arturbosch.detekt:io.gitlab.arturbosch.detekt.gradle.plugin:1.23.8")
 }
