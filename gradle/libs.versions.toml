@@ -5,12 +5,16 @@ ktlint = "1.5.0"
 micronaut = "4.10.7"
 # Also set in settings.gradle.kts
 micronautPlugin = "4.6.1"
+mockito = "5.14.2"
 
 [libraries]
 assertk = "com.willowtreeapps.assertk:assertk:0.28.1"
 detekt-imports = "com.pkware.detekt:import-extension:1.2.0"
 jspecify = "org.jspecify:jspecify:1.0.0"
 junit-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit" }
+mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
+mockito-junit = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mockito" }
+mockito-kotlin = "org.mockito.kotlin:mockito-kotlin:5.4.0"
 moshi = "com.squareup.moshi:moshi:1.15.2"
 
 [plugins]
@@ -20,3 +24,4 @@ micronaut-aot = { id = "io.micronaut.aot", version.ref = "micronautPlugin" }
 micronaut-library = { id = "io.micronaut.library", version.ref = "micronautPlugin" }
 
 [bundles]
+mockito = ["mockito-core", "mockito-junit", "mockito-kotlin"]

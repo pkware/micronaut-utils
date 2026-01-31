@@ -7,9 +7,10 @@ A collection of utility libraries for the [Micronaut](https://micronaut.io/) eco
 
 ## Modules
 
-| Module | Description |
-|--------|-------------|
-| [assisted-inject](assisted-inject/) | Assisted injection pattern for Micronaut — create objects that combine DI services with runtime parameters |
+| Module                             | Description                                                                                                |
+|------------------------------------|------------------------------------------------------------------------------------------------------------|
+| [assisted-inject](assisted-inject) | Assisted injection pattern for Micronaut — create objects that combine DI services with runtime parameters |
+| [junit-jupiter](junit-jupiter)     | Test helpers to make using Micronaut in testing easier                                                     |
 
 ## Installation
 
