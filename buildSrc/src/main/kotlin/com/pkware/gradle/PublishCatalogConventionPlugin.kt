@@ -2,29 +2,35 @@ package com.pkware.gradle
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.publish.maven.plugins.MavenPublishPlugin
 import org.gradle.kotlin.dsl.apply
 import org.gradle.kotlin.dsl.configure
-import org.gradle.kotlin.dsl.get
 import org.gradle.kotlin.dsl.getByType
 import org.gradle.kotlin.dsl.register
 import org.gradle.plugins.signing.SigningExtension
 import org.gradle.plugins.signing.SigningPlugin
 
 /**
- * Plugin for projects that publish.
+ * Plugin for publishing Gradle version catalogs.
+ *
+ * Adapts the standard publishing convention for version catalogs, which use the
+ * `versionCatalog` component instead of the `java` component and don't require
+ * Javadoc or sources jars.
  */
-class PublishConventionPlugin : Plugin<Project> {
+class PublishCatalogConventionPlugin : Plugin<Project> {
   override fun apply(target: Project): Unit = target.run {
     apply<MavenPublishPlugin>()
 
     configure<PublishingExtension> {
       publications {
-        register<MavenPublication>("mavenJava") {
-          from(components["java"])
+        register<MavenPublication>("mavenCatalog") {
+          // Version catalog component is registered by the version-catalog plugin
+          val versionCatalogComponent = components.findByName("versionCatalog")
+          if (versionCatalogComponent != null) {
+            from(versionCatalogComponent)
+          }
           pom {
             name.set(pomName)
             description.set(pomDescription)
@@ -84,53 +90,12 @@ class PublishConventionPlugin : Plugin<Project> {
           signingPassword,
         )
 
-        sign(extensions.getByType<PublishingExtension>().publications["mavenJava"])
+        val publishExtension = extensions.getByType<PublishingExtension>()
+        val publication = publishExtension.publications.findByName("mavenCatalog")
+        if (publication != null) {
+          sign(publication)
+        }
       }
-    }
-
-    extensions.configure<JavaPluginExtension> {
-      withJavadocJar()
-      withSourcesJar()
     }
   }
 }
-
-val String.isReleaseBuild
-  get() = !contains("SNAPSHOT")
-
-val Project.releaseRepositoryUrl: String
-  get() = properties.getOrDefault(
-    "RELEASE_REPOSITORY_URL",
-    "https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2",
-  ).toString()
-
-val Project.snapshotRepositoryUrl: String
-  get() = properties.getOrDefault(
-    "SNAPSHOT_REPOSITORY_URL",
-    "https://central.sonatype.com/repository/maven-snapshots/",
-  ).toString()
-
-val Project.repositoryUsername: String
-  get() = properties.getOrDefault("NEXUS_USERNAME", "").toString()
-
-val Project.repositoryPassword: String
-  get() = properties.getOrDefault("NEXUS_PASSWORD", "").toString()
-
-val Project.signingKeyId: String
-  get() = properties.getOrDefault("SIGNING_KEY_ID", "").toString()
-
-val Project.signingKey: String
-  get() = properties.getOrDefault("SIGNING_KEY", "").toString()
-
-val Project.signingPassword: String
-  get() = properties.getOrDefault("SIGNING_PASSWORD", "").toString()
-
-val Project.pomPackaging: String
-  get() = properties.getOrDefault("POM_PACKAGING", "jar").toString()
-
-val Project.pomName: String
-  get() = properties.getOrDefault("POM_NAME", name).toString()
-
-val Project.pomDescription: String
-  get() = properties.getOrDefault("POM_DESCRIPTION", pomName).toString()
-

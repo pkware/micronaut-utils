@@ -6,6 +6,7 @@ include(
   "assisted-inject",
   "assisted-inject-test-java",
   "assisted-inject-test-ksp",
+  "catalog",
   "junit-jupiter",
 )
 

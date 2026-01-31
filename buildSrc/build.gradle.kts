@@ -16,6 +16,10 @@ gradlePlugin {
       id = "publish-conventions"
       implementationClass = "com.pkware.gradle.PublishConventionPlugin"
     }
+    register("publish-catalog-convention-plugin") {
+      id = "publish-catalog-conventions"
+      implementationClass = "com.pkware.gradle.PublishCatalogConventionPlugin"
+    }
   }
 }
 
