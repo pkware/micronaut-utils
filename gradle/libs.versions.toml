@@ -5,7 +5,7 @@ ktlint = "1.5.0"
 micronaut = "4.10.7"
 # Also set in settings.gradle.kts
 micronautPlugin = "4.6.1"
-mockito = "5.14.2"
+mockito = "5.21.0"
 
 [libraries]
 assertk = "com.willowtreeapps.assertk:assertk:0.28.1"
