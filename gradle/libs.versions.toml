@@ -4,7 +4,7 @@ ktlint = "1.5.0"
 # DO NOT DELETE - Used by the Micronaut Gradle plugin.
 micronaut = "4.10.7"
 # Also set in settings.gradle.kts
-micronautPlugin = "4.6.1"
+micronautPlugin = "4.6.2"
 mockito = "5.21.0"
 
 [libraries]
