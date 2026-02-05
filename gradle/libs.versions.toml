@@ -18,7 +18,7 @@ mockito-kotlin = "org.mockito.kotlin:mockito-kotlin:6.2.3"
 moshi = "com.squareup.moshi:moshi:1.15.2"
 
 [plugins]
-kotlin-allOpen = { id = "org.jetbrains.kotlin.plugin.allopen", version = "2.2.21" }
+kotlin-allOpen = { id = "org.jetbrains.kotlin.plugin.allopen", version = "2.3.10" }
 ksp = "com.google.devtools.ksp:2.2.21-2.0.4"
 micronaut-aot = { id = "io.micronaut.aot", version.ref = "micronautPlugin" }
 micronaut-library = { id = "io.micronaut.library", version.ref = "micronautPlugin" }
