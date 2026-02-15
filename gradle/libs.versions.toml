@@ -1,5 +1,5 @@
 [versions]
-junit = "6.0.2"
+junit = "6.0.3"
 ktlint = "1.5.0"
 # DO NOT DELETE - Used by the Micronaut Gradle plugin.
 micronaut = "4.10.7"
