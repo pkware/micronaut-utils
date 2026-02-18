@@ -19,7 +19,7 @@ moshi = "com.squareup.moshi:moshi:1.15.2"
 
 [plugins]
 kotlin-allOpen = { id = "org.jetbrains.kotlin.plugin.allopen", version = "2.3.10" }
-ksp = "com.google.devtools.ksp:2.3.5"
+ksp = "com.google.devtools.ksp:2.3.6"
 micronaut-aot = { id = "io.micronaut.aot", version.ref = "micronautPlugin" }
 micronaut-library = { id = "io.micronaut.library", version.ref = "micronautPlugin" }
 
