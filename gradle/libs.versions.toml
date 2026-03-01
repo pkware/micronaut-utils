@@ -5,11 +5,13 @@ ktlint = "1.5.0"
 micronaut = "4.10.7"
 # Also set in settings.gradle.kts
 micronautPlugin = "4.6.2"
+grpc = "1.72.0"
 mockito = "5.21.0"
 
 [libraries]
 assertk = "com.willowtreeapps.assertk:assertk:0.28.1"
 detekt-imports = "com.pkware.detekt:import-extension:1.2.0"
+grpc-api = { module = "io.grpc:grpc-api", version.ref = "grpc" }
 jspecify = "org.jspecify:jspecify:1.0.0"
 junit-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit" }
 mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }

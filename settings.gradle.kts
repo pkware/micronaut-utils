@@ -8,6 +8,8 @@ include(
   "assisted-inject-test-ksp",
   "catalog",
   "junit-jupiter",
+  "security-grpc",
+  "security-grpc-processor",
 )
 
 dependencyResolutionManagement {
