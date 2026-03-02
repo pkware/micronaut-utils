@@ -11,16 +11,15 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
- * Builds a {@code fullMethodName → requiredRoles} map at startup from {@code @Secured}
+ * Builds a {@code fullMethodName → ExecutableMethod} map at startup from {@code @Secured}
  * annotations on gRPC service methods.
  *
  * <p>For each {@link BindableService}, inspects its gRPC {@link ServerServiceDefinition}
  * to discover method names, then looks up the corresponding
- * {@link ExecutableMethod} to read {@code @Secured} role values.
+ * {@link ExecutableMethod} to verify it carries {@code @Secured}.
  *
  * <p>Methods that are not overridden or not annotated with {@code @Secured} are absent
  * from the map — callers should treat absence as "deny" for a deny-by-default model.
@@ -30,7 +29,7 @@ public final class GrpcSecuredMethodRegistry {
 
   private static final String SECURED = "io.micronaut.security.annotation.Secured";
 
-  private final Map<String, List<String>> methodRoles;
+  private final Map<String, ExecutableMethod<?, ?>> methodExecutables;
 
   /**
    * Creates the registry by scanning all {@link BindableService} beans for
@@ -42,27 +41,27 @@ public final class GrpcSecuredMethodRegistry {
   public GrpcSecuredMethodRegistry(
       Collection<BindableService> services,
       BeanContext beanContext) {
-    this.methodRoles = buildMethodRolesMap(services, beanContext);
+    this.methodExecutables = buildMethodExecutablesMap(services, beanContext);
   }
 
   /**
-   * Returns the roles required for the given gRPC full method name, or {@code null}
+   * Returns the {@link ExecutableMethod} for the given gRPC full method name, or {@code null}
    * if the method is not registered.
    *
    * <p>A {@code null} return means the method was not annotated with {@code @Secured}
    * and should be denied in a deny-by-default model.
    *
    * @param fullMethodName the gRPC full method name (e.g. {@code "recurse.site.TaskQueueService/GetTaskQueues"}).
-   * @return required roles, or {@code null} if not registered.
+   * @return the executable method, or {@code null} if not registered.
    */
-  public @Nullable List<String> getRequiredRoles(String fullMethodName) {
-    return methodRoles.get(fullMethodName);
+  public @Nullable ExecutableMethod<?, ?> getExecutableMethod(String fullMethodName) {
+    return methodExecutables.get(fullMethodName);
   }
 
-  private static Map<String, List<String>> buildMethodRolesMap(
+  private static Map<String, ExecutableMethod<?, ?>> buildMethodExecutablesMap(
       Collection<BindableService> services,
       BeanContext beanContext) {
-    var map = new HashMap<String, List<String>>();
+    var map = new HashMap<String, ExecutableMethod<?, ?>>();
 
     for (var service : services) {
       BeanDefinition<?> beanDefinition = beanContext.getBeanDefinition(service.getClass());
@@ -77,7 +76,7 @@ public final class GrpcSecuredMethodRegistry {
             String[] roles = executableMethod.stringValues(SECURED);
             if (roles.length > 0) {
               String fullMethodName = MethodDescriptor.generateFullMethodName(serviceName, methodName);
-              map.put(fullMethodName, List.of(roles));
+              map.put(fullMethodName, executableMethod);
             }
             break;
           }

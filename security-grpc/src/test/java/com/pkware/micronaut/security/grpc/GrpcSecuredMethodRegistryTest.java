@@ -4,6 +4,7 @@ import io.grpc.BindableService;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.ServiceDescriptor;
+import io.micronaut.inject.ExecutableMethod;
 import io.micronaut.security.annotation.Secured;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import jakarta.inject.Inject;
@@ -33,33 +34,34 @@ class GrpcSecuredMethodRegistryTest {
 
   @Test
   void securedMethodAppearsInRegistry() {
-    var roles = registry.getRequiredRoles("test.Alpha/SecuredWork");
-    assertNotNull(roles);
-    assertEquals(List.of("data_center:worker"), roles);
+    ExecutableMethod<?, ?> method = registry.getExecutableMethod("test.Alpha/SecuredWork");
+    assertNotNull(method);
+    assertEquals("SecuredWork", method.getMethodName());
+    assertEquals(List.of("data_center:worker"), List.of(method.stringValues("io.micronaut.security.annotation.Secured")));
   }
 
   @Test
   void multipleRolesPreserved() {
-    var roles = registry.getRequiredRoles("test.Alpha/MultiRole");
-    assertNotNull(roles);
-    assertEquals(List.of("role:admin", "role:user"), roles);
+    ExecutableMethod<?, ?> method = registry.getExecutableMethod("test.Alpha/MultiRole");
+    assertNotNull(method);
+    assertEquals(List.of("role:admin", "role:user"), List.of(method.stringValues("io.micronaut.security.annotation.Secured")));
   }
 
   @Test
   void unsecuredMethodAbsentFromRegistry() {
-    assertNull(registry.getRequiredRoles("test.Alpha/UnsecuredWork"));
+    assertNull(registry.getExecutableMethod("test.Alpha/UnsecuredWork"));
   }
 
   @Test
   void secondServiceMethodAppearsInRegistry() {
-    var roles = registry.getRequiredRoles("test.Beta/BetaWork");
-    assertNotNull(roles);
-    assertEquals(List.of("scope:beta"), roles);
+    ExecutableMethod<?, ?> method = registry.getExecutableMethod("test.Beta/BetaWork");
+    assertNotNull(method);
+    assertEquals(List.of("scope:beta"), List.of(method.stringValues("io.micronaut.security.annotation.Secured")));
   }
 
   @Test
   void unknownMethodReturnsNull() {
-    assertNull(registry.getRequiredRoles("unknown.Service/Unknown"));
+    assertNull(registry.getExecutableMethod("unknown.Service/Unknown"));
   }
 
   private static final MethodDescriptor.Marshaller<byte[]> BYTES_MARSHALLER =
