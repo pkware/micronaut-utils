@@ -10,6 +10,7 @@ import io.micronaut.management.endpoint.health.HealthEndpoint
 import io.micronaut.management.health.aggregator.HealthAggregator
 import io.micronaut.management.health.indicator.HealthIndicator
 import io.micronaut.management.health.indicator.HealthResult
+import io.micronaut.management.health.indicator.annotation.Readiness
 import io.micronaut.scheduling.TaskExecutors
 import jakarta.inject.Named
 import jakarta.inject.Singleton
@@ -40,6 +41,7 @@ import javax.sql.DataSource
  *   when multiple pools exist.
  */
 @Singleton
+@Readiness
 @Requires(property = HealthEndpoint.PREFIX + ".jdbc.hikari.enabled", notEquals = StringUtils.FALSE)
 @Requires(beans = [HealthEndpoint::class])
 @Requires(beans = [DataSource::class])
