@@ -50,11 +50,25 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * on the test annotation processor classpath generates the {@code ExecutableMethod}
  * metadata that {@link GrpcSecuredMethodRegistry} reads at startup.
  *
- * <p>Authorization is delegated to Micronaut Security's {@code SecurityRule} chain
- * (including {@code SecuredAnnotationRule}).
+ * <p>The intercept-url-map tests use {@link UnconfiguredService}, which has no
+ * {@code @Secured} annotations and represents a third-party service (like
+ * {@code grpc.health.v1.Health}) that relies on configuration-driven access rules.
+ *
+ * <p>intercept-url-map patterns are configured at the class level (not per-test) because
+ * {@code ConfigurationInterceptUrlMapRule} reads patterns at construction time and is not
+ * {@code @Refreshable}. Using per-method patterns for different access rules: each method
+ * name in {@link UnconfiguredService} corresponds to one access rule in the map.
  */
 @MicronautTest(startApplication = false)
-@Property(name = "micronaut.security.grpc.unauthenticated-services[0]", value = "grpc.health.v1.Health")
+// These patterns cover the UnconfiguredService methods used in intercept-url-map tests.
+// The pattern format is "/" + fullMethodName, matching ConfigurationInterceptUrlMapRule's
+// path matching against the synthetic request URI that GrpcSecurityInterceptor builds.
+@Property(name = "micronaut.security.intercept-url-map[0].pattern", value = "/unconfigured.Service/AnonMethod")
+@Property(name = "micronaut.security.intercept-url-map[0].access[0]", value = "isAnonymous()")
+@Property(name = "micronaut.security.intercept-url-map[1].pattern", value = "/unconfigured.Service/AuthMethod")
+@Property(name = "micronaut.security.intercept-url-map[1].access[0]", value = "isAuthenticated()")
+@Property(name = "micronaut.security.intercept-url-map[2].pattern", value = "/unconfigured.Service/RoleMethod")
+@Property(name = "micronaut.security.intercept-url-map[2].access[0]", value = "data_center:worker")
 class GrpcSecurityInterceptorTest {
 
   @Inject
@@ -63,16 +77,7 @@ class GrpcSecurityInterceptorTest {
   @Inject
   MeterRegistry meterRegistry;
 
-  @Test
-  void unauthenticatedServicePassesThrough() {
-    var call = new FakeServerCall<>(HEALTH_CHECK_METHOD);
-    var handler = new CapturingCallHandler<byte[], byte[]>();
-
-    interceptor.interceptCall(call, new Metadata(), handler);
-
-    assertTrue(handler.wasCalled, "Health check should pass through without auth");
-    assertNull(call.closedStatus);
-  }
+  // ── @Secured annotation tests ─────────────────────────────────────────────
 
   @Test
   void unregisteredMethodDenied() {
@@ -168,6 +173,86 @@ class GrpcSecurityInterceptorTest {
     assertTrue(timer.count() >= 1, "Timer should have been recorded at least once");
     assertTrue(timer.totalTime(TimeUnit.NANOSECONDS) > 0);
   }
+
+  // ── intercept-url-map tests ───────────────────────────────────────────────
+  //
+  // These tests verify that micronaut.security.intercept-url-map works for gRPC methods
+  // that have no @Secured annotation — the common case for third-party services like
+  // grpc.health.v1.Health. Each method in UnconfiguredService has a dedicated intercept-
+  // url-map pattern (configured at the class level) with a different access rule.
+
+  @Test
+  void interceptUrlMapWithIsAnonymousAllowsUnauthenticatedCalls() {
+    var call = new FakeServerCall<>(UNCONFIGURED_ANON_METHOD);
+    var handler = new CapturingCallHandler<byte[], byte[]>();
+
+    interceptor.interceptCall(call, new Metadata(), handler);
+
+    // No credentials needed — the method is configured as publicly accessible.
+    assertTrue(handler.wasCalled);
+    assertNull(call.closedStatus);
+  }
+
+  @Test
+  void interceptUrlMapWithIsAuthenticatedPassesWithValidToken() {
+    var call = new FakeServerCall<>(UNCONFIGURED_AUTH_METHOD);
+    var handler = new CapturingCallHandler<byte[], byte[]>();
+
+    interceptor.interceptCall(call, bearerHeaders("valid-worker"), handler);
+
+    // Any valid authentication is sufficient — the method requires login but no specific role.
+    assertTrue(handler.wasCalled);
+    assertNull(call.closedStatus);
+  }
+
+  @Test
+  void interceptUrlMapWithIsAuthenticatedDeniesUnauthenticatedCalls() {
+    var call = new FakeServerCall<>(UNCONFIGURED_AUTH_METHOD);
+
+    interceptor.interceptCall(call, new Metadata(), FAILING_HANDLER);
+
+    // The rule explicitly rejected the caller — status is UNAUTHENTICATED, not method_not_allowed.
+    assertEquals(Status.Code.UNAUTHENTICATED, call.closedStatus.getCode());
+    assertCounter(GrpcSecurityMetrics.OUTCOME_FAILED, GrpcSecurityMetrics.REASON_REJECTED);
+  }
+
+  @Test
+  void interceptUrlMapWithSpecificRoleAllowsMatchingToken() {
+    var call = new FakeServerCall<>(UNCONFIGURED_ROLE_METHOD);
+    var handler = new CapturingCallHandler<byte[], byte[]>();
+
+    interceptor.interceptCall(call, bearerHeaders("valid-worker"), handler);
+
+    assertTrue(handler.wasCalled);
+    assertNull(call.closedStatus);
+  }
+
+  @Test
+  void interceptUrlMapWithSpecificRoleDeniesWrongRole() {
+    var call = new FakeServerCall<>(UNCONFIGURED_ROLE_METHOD);
+
+    interceptor.interceptCall(call, bearerHeaders("valid-wrong-scope"), FAILING_HANDLER);
+
+    // The rule explicitly rejected the caller — status is PERMISSION_DENIED "Insufficient scope".
+    assertEquals(Status.Code.PERMISSION_DENIED, call.closedStatus.getCode());
+    assertTrue(call.closedStatus.getDescription().contains("Insufficient scope"));
+    assertCounter(GrpcSecurityMetrics.OUTCOME_FAILED, GrpcSecurityMetrics.REASON_REJECTED);
+  }
+
+  @Test
+  void unAnnotatedMethodWithoutInterceptUrlMapPatternDenied() {
+    // UNKNOWN_METHOD has no @Secured and no intercept-url-map pattern.
+    var call = new FakeServerCall<>(UNKNOWN_METHOD);
+
+    interceptor.interceptCall(call, new Metadata(), FAILING_HANDLER);
+
+    // No rule made an explicit decision — this is the deny-by-default path.
+    assertEquals(Status.Code.PERMISSION_DENIED, call.closedStatus.getCode());
+    assertTrue(call.closedStatus.getDescription().contains("Method not allowed"));
+    assertCounter(GrpcSecurityMetrics.OUTCOME_FAILED, GrpcSecurityMetrics.REASON_METHOD_NOT_ALLOWED);
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
 
   private void assertCounter(String outcome, String reason) {
     var counter = meterRegistry.find(GrpcSecurityMetrics.AUTH_ATTEMPTS)
@@ -270,6 +355,35 @@ class GrpcSecurityInterceptorTest {
     }
   }
 
+  /**
+   * Simulates a third-party gRPC service (e.g. grpc.health.v1.Health) that cannot carry
+   * {@code @Secured} annotations. Access is configured exclusively via intercept-url-map.
+   * Each method corresponds to a different class-level intercept-url-map pattern so that
+   * all access-rule variants can be tested within a single application context.
+   */
+  @Singleton
+  static class UnconfiguredService implements BindableService {
+
+    @Override
+    public ServerServiceDefinition bindService() {
+      var anonMethod = method("unconfigured.Service", "AnonMethod");
+      var authMethod = method("unconfigured.Service", "AuthMethod");
+      var roleMethod = method("unconfigured.Service", "RoleMethod");
+
+      var descriptor = ServiceDescriptor.newBuilder("unconfigured.Service")
+          .addMethod(anonMethod)
+          .addMethod(authMethod)
+          .addMethod(roleMethod)
+          .build();
+
+      return ServerServiceDefinition.builder(descriptor)
+          .addMethod(anonMethod, (call, headers) -> { throw new UnsupportedOperationException(); })
+          .addMethod(authMethod, (call, headers) -> { throw new UnsupportedOperationException(); })
+          .addMethod(roleMethod, (call, headers) -> { throw new UnsupportedOperationException(); })
+          .build();
+    }
+  }
+
   /** Records the {@link Status} passed to {@link ServerCall#close}. */
   private static class FakeServerCall<ReqT, RespT> extends ServerCall<ReqT, RespT> {
     private final MethodDescriptor<ReqT, RespT> methodDescriptor;
@@ -324,25 +438,21 @@ class GrpcSecurityInterceptorTest {
   private static final Metadata.Key<String> AUTHORIZATION_KEY =
       Metadata.Key.of("authorization", Metadata.ASCII_STRING_MARSHALLER);
 
-  /** Method descriptor for the test service's secured method. */
   private static final MethodDescriptor<byte[], byte[]> SECURED_METHOD =
       method("test.Service", "SecuredWork");
-
-  /** Method descriptor for the test service's anonymous method. */
   private static final MethodDescriptor<byte[], byte[]> ANONYMOUS_METHOD =
       method("test.Service", "AnonWork");
-
-  /** Method descriptor for the test service's authenticated method. */
   private static final MethodDescriptor<byte[], byte[]> AUTHENTICATED_METHOD =
       method("test.Service", "AuthenticatedWork");
-
-  /** Method descriptor for the health check service (configured as unauthenticated). */
-  private static final MethodDescriptor<byte[], byte[]> HEALTH_CHECK_METHOD =
-      method("grpc.health.v1.Health", "Check");
-
-  /** Method descriptor for a service not in the registry. */
   private static final MethodDescriptor<byte[], byte[]> UNKNOWN_METHOD =
       method("unknown.Service", "Unknown");
+  // Each UNCONFIGURED_* constant corresponds to a class-level intercept-url-map pattern.
+  private static final MethodDescriptor<byte[], byte[]> UNCONFIGURED_ANON_METHOD =
+      method("unconfigured.Service", "AnonMethod");
+  private static final MethodDescriptor<byte[], byte[]> UNCONFIGURED_AUTH_METHOD =
+      method("unconfigured.Service", "AuthMethod");
+  private static final MethodDescriptor<byte[], byte[]> UNCONFIGURED_ROLE_METHOD =
+      method("unconfigured.Service", "RoleMethod");
 
   private static final ServerCallHandler<byte[], byte[]> FAILING_HANDLER =
       (call, headers) -> { throw new AssertionError("Handler should not be called"); };

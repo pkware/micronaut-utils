@@ -61,7 +61,7 @@ final class GrpcMethodRouteMatch implements MethodBasedRouteMatch<Object, Object
   }
 
   @Override
-  public Argument[] getArguments() {
+  public Argument<?>[] getArguments() {
     return executableMethod.getArguments();
   }
 

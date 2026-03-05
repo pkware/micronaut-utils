@@ -39,8 +39,8 @@ public final class GrpcSecuredMethodRegistry {
    * @param beanContext for looking up bean definitions and executable method metadata.
    */
   public GrpcSecuredMethodRegistry(
-      Collection<BindableService> services,
-      BeanContext beanContext) {
+    Collection<BindableService> services,
+    BeanContext beanContext) {
     this.methodExecutables = buildMethodExecutablesMap(services, beanContext);
   }
 
@@ -51,7 +51,7 @@ public final class GrpcSecuredMethodRegistry {
    * <p>A {@code null} return means the method was not annotated with {@code @Secured}
    * and should be denied in a deny-by-default model.
    *
-   * @param fullMethodName the gRPC full method name (e.g. {@code "recurse.site.TaskQueueService/GetTaskQueues"}).
+   * @param fullMethodName the gRPC full method name (e.g. {@code "helloworld.Greeter/SayHello"}).
    * @return the executable method, or {@code null} if not registered.
    */
   public @Nullable ExecutableMethod<?, ?> getExecutableMethod(String fullMethodName) {
@@ -59,14 +59,13 @@ public final class GrpcSecuredMethodRegistry {
   }
 
   private static Map<String, ExecutableMethod<?, ?>> buildMethodExecutablesMap(
-      Collection<BindableService> services,
-      BeanContext beanContext) {
+    Collection<BindableService> services,
+    BeanContext beanContext) {
     var map = new HashMap<String, ExecutableMethod<?, ?>>();
 
     for (var service : services) {
       BeanDefinition<?> beanDefinition = beanContext.getBeanDefinition(service.getClass());
       ServerServiceDefinition serviceDefinition = service.bindService();
-      String serviceName = serviceDefinition.getServiceDescriptor().getName();
 
       for (var grpcMethod : serviceDefinition.getServiceDescriptor().getMethods()) {
         String methodName = extractMethodName(grpcMethod);
@@ -75,8 +74,7 @@ public final class GrpcSecuredMethodRegistry {
           if (executableMethod.getMethodName().equals(methodName)) {
             String[] roles = executableMethod.stringValues(SECURED);
             if (roles.length > 0) {
-              String fullMethodName = MethodDescriptor.generateFullMethodName(serviceName, methodName);
-              map.put(fullMethodName, executableMethod);
+              map.put(grpcMethod.getFullMethodName(), executableMethod);
             }
             break;
           }
