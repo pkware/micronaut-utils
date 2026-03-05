@@ -28,6 +28,10 @@ dependencies {
   // SecuredAnnotationMapper SPI must be on the annotation processor classpath so that
   // @Secured on test beans generates @Executable metadata for GrpcSecuredMethodRegistry.
   testAnnotationProcessor(projects.securityGrpcProcessor)
+  testImplementation(mn.micronaut.http.client) {
+    because("Puts NettyClientHttpRequestFactory on the classpath so HttpRequest.GET() returns " +
+        "NettyClientHttpRequest — the same implementation used in production")
+  }
   testImplementation(mn.micronaut.http.server)
   testImplementation(mn.micronaut.test.junit5)
 }

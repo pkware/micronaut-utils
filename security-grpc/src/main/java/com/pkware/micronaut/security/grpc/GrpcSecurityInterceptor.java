@@ -10,9 +10,11 @@ import io.grpc.Status;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import io.micronaut.core.order.Ordered;
+import io.micronaut.http.HttpMethod;
 import io.micronaut.http.HttpRequest;
 import io.micronaut.http.MutableHttpRequest;
 import io.micronaut.http.filter.ServerFilterPhase;
+import io.micronaut.http.simple.SimpleHttpRequest;
 import io.micronaut.web.router.RouteAttributes;
 import io.micronaut.inject.ExecutableMethod;
 import io.micronaut.security.authentication.Authentication;
@@ -228,7 +230,7 @@ public final class GrpcSecurityInterceptor implements ServerInterceptor, Ordered
     String fullMethodName,
     Metadata headers,
     @Nullable ExecutableMethod<?, ?> executableMethod) {
-    MutableHttpRequest<?> request = HttpRequest.GET("/" + fullMethodName);
+    MutableHttpRequest<?> request = new SimpleHttpRequest<>(HttpMethod.GET, "/" + fullMethodName, null);
     for (String key : headers.keys()) {
       if (!key.endsWith(Metadata.BINARY_HEADER_SUFFIX)) {
         String value = headers.get(Metadata.Key.of(key, Metadata.ASCII_STRING_MARSHALLER));

@@ -16,9 +16,11 @@ import io.micronaut.core.annotation.NonNull;
 import io.micronaut.http.HttpRequest;
 import io.micronaut.http.server.util.HttpHostResolver;
 import io.micronaut.http.server.util.locale.HttpLocaleResolver;
-import io.micronaut.security.authentication.Authentication;
+import io.micronaut.core.order.Ordered;
 import io.micronaut.security.annotation.Secured;
+import io.micronaut.security.authentication.Authentication;
 import io.micronaut.security.rules.SecurityRule;
+import io.micronaut.security.rules.SecurityRuleResult;
 import io.micronaut.security.token.validator.TokenValidator;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import jakarta.inject.Inject;
@@ -34,6 +36,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -252,6 +255,91 @@ class GrpcSecurityInterceptorTest {
     assertCounter(GrpcSecurityMetrics.OUTCOME_FAILED, GrpcSecurityMetrics.REASON_METHOD_NOT_ALLOWED);
   }
 
+  // ── Synthetic HttpRequest tests ──────────────────────────────────────────
+  //
+  // These tests verify properties of the synthetic HttpRequest that
+  // GrpcSecurityInterceptor builds from gRPC Metadata. The
+  // RequestCapturingFetcher bean captures the request so we can inspect it.
+
+  @Inject
+  RequestCapturingRule requestCapturingRule;
+
+  @Test
+  void syntheticRequestSupportsCookieAccess() {
+    // Reproduces the production bug: CookieTokenReader calls getCookies() on the
+    // synthetic request. If the HttpRequest implementation doesn't support cookies,
+    // this would throw UnsupportedOperationException inside the auth pipeline.
+    var call = new FakeServerCall<>(SECURED_METHOD);
+    var headers = bearerHeaders("valid-worker");
+    var handler = new CapturingCallHandler<byte[], byte[]>();
+
+    interceptor.interceptCall(call, headers, handler);
+
+    // The RequestCapturingRule called getCookies() without throwing.
+    assertTrue(handler.wasCalled, "Auth should succeed despite cookie access in pipeline");
+    assertNull(call.closedStatus);
+    var capture = requestCapturingRule.findByMethod("test.Service/SecuredWork");
+    assertNotNull(capture, "RequestCapturingRule should have been invoked");
+    assertTrue(capture.cookiesAccessSucceeded(),
+        "getCookies() should not throw on the synthetic request (class: "
+            + capture.request().getClass().getName() + ")");
+  }
+
+  @Test
+  void syntheticRequestExcludesBinaryHeaders() {
+    var call = new FakeServerCall<>(SECURED_METHOD);
+    var headers = bearerHeaders("valid-worker");
+    // gRPC binary headers end with "-bin" and carry non-ASCII data.
+    headers.put(
+        Metadata.Key.of("custom-data-bin", Metadata.BINARY_BYTE_MARSHALLER),
+        new byte[]{1, 2, 3});
+    headers.put(
+        Metadata.Key.of("x-custom-text", Metadata.ASCII_STRING_MARSHALLER),
+        "hello");
+    var handler = new CapturingCallHandler<byte[], byte[]>();
+
+    interceptor.interceptCall(call, headers, handler);
+
+    assertTrue(handler.wasCalled);
+    HttpRequest<?> captured = findCaptureWithHeader("x-custom-text");
+    assertNotNull(captured, "Should find a captured request with x-custom-text header");
+    assertNull(captured.getHeaders().get("custom-data-bin"),
+        "Binary headers should be excluded from the synthetic request");
+    assertEquals("hello", captured.getHeaders().get("x-custom-text"),
+        "ASCII headers should be copied to the synthetic request");
+  }
+
+  @Test
+  void syntheticRequestCopiesMultipleAsciiHeaders() {
+    var call = new FakeServerCall<>(SECURED_METHOD);
+    var headers = bearerHeaders("valid-worker");
+    headers.put(
+        Metadata.Key.of("x-request-id", Metadata.ASCII_STRING_MARSHALLER),
+        "req-123");
+    headers.put(
+        Metadata.Key.of("x-tenant-id", Metadata.ASCII_STRING_MARSHALLER),
+        "tenant-456");
+    var handler = new CapturingCallHandler<byte[], byte[]>();
+
+    interceptor.interceptCall(call, headers, handler);
+
+    assertTrue(handler.wasCalled);
+    HttpRequest<?> captured = findCaptureWithHeader("x-request-id");
+    assertNotNull(captured, "Should find a captured request with x-request-id header");
+    assertEquals("req-123", captured.getHeaders().get("x-request-id"));
+    assertEquals("tenant-456", captured.getHeaders().get("x-tenant-id"));
+  }
+
+  /** Finds a captured request that contains the given header. */
+  private HttpRequest<?> findCaptureWithHeader(String headerName) {
+    for (var capture : requestCapturingRule.captures) {
+      if (capture.request().getHeaders().get(headerName) != null) {
+        return capture.request();
+      }
+    }
+    return null;
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   private void assertCounter(String outcome, String reason) {
@@ -289,6 +377,58 @@ class GrpcSecurityInterceptorTest {
       return Mono.empty();
     }
   }
+
+  /**
+   * A {@link SecurityRule} that runs before all other rules and captures every synthetic
+   * {@link HttpRequest} that {@link GrpcSecurityInterceptor} builds from gRPC metadata.
+   * Also exercises {@code getCookies()} to detect the production bug where
+   * {@code CookieTokenReader} crashes on gRPC requests.
+   *
+   * <p>Returns {@link SecurityRuleResult#UNKNOWN} so it never interferes with the real
+   * security rule chain ({@code SecuredAnnotationRule}, {@code ConfigurationInterceptUrlMapRule}).
+   *
+   * <p>Uses the {@link SecurityRule} chain instead of {@code AuthenticationFetcher}
+   * because rules run via {@code concatMap} (sequential, guaranteed execution), whereas
+   * authentication fetchers run via {@code flatMap} + {@code next()} which may cancel
+   * remaining fetchers after the first emission.
+   *
+   * <p>Captures are stored in a thread-safe queue so tests running in parallel
+   * can each find their own request by matching the URI path.
+   */
+  @Singleton
+  static class RequestCapturingRule implements SecurityRule<HttpRequest<?>>, Ordered {
+    final ConcurrentLinkedQueue<CapturedRequest> captures = new ConcurrentLinkedQueue<>();
+
+    @Override
+    public int getOrder() {
+      return HIGHEST_PRECEDENCE;
+    }
+
+    @Override
+    public Publisher<SecurityRuleResult> check(HttpRequest<?> request, @Nullable Authentication authentication) {
+      boolean cookiesOk;
+      try {
+        request.getCookies();
+        cookiesOk = true;
+      } catch (UnsupportedOperationException e) {
+        cookiesOk = false;
+      }
+      captures.add(new CapturedRequest(request, cookiesOk));
+      return Mono.just(SecurityRuleResult.UNKNOWN);
+    }
+
+    /** Finds the first capture whose URI path contains the given method name. */
+    CapturedRequest findByMethod(String fullMethodName) {
+      for (var capture : captures) {
+        if (capture.request.getPath().contains(fullMethodName)) {
+          return capture;
+        }
+      }
+      return null;
+    }
+  }
+
+  record CapturedRequest(HttpRequest<?> request, boolean cookiesAccessSucceeded) {}
 
   /** Provides a {@link SimpleMeterRegistry} for metrics recording in tests. */
   @Singleton
