@@ -13,6 +13,7 @@ A collection of utility libraries for the [Micronaut](https://micronaut.io/) eco
 | [hikari-health](hikari-health)                      | Health indicator for HikariCP connection pools with detailed pool statistics                  |
 | [junit-jupiter](junit-jupiter)                      | JUnit 5 extensions that catch common @MicronautTest lifecycle configuration mistakes         |
 | [security-grpc](security-grpc)                      | gRPC server interceptor that enforces Micronaut Security @Secured rules on gRPC methods      |
+| [mock-oauth2-test-resource](mock-oauth2-test-resource) | Micronaut test-resources provider that starts a mock OAuth2 server for test and dev environments |
 | [security-grpc-processor](security-grpc-processor)  | Annotation processor required by security-grpc to read @Secured metadata at compile time     |
 
 ## Installation
