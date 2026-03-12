@@ -9,6 +9,7 @@ include(
   "catalog",
   "hikari-health",
   "junit-jupiter",
+  "mock-oauth2-test-resource",
   "security-grpc",
   "security-grpc-processor",
 )
