@@ -9,7 +9,10 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isNotEmpty
 import assertk.assertions.isNotNull
 import assertk.assertions.isTrue
-import org.junit.jupiter.api.AfterAll
+import com.nimbusds.jwt.SignedJWT
+import okhttp3.FormBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -18,12 +21,6 @@ import org.junit.jupiter.api.TestInstance
 class MockOAuth2TestResourceProviderTest {
 
   private val provider = MockOAuth2TestResourceProvider()
-
-  @AfterAll
-  fun tearDown() {
-    // Resolve a property to ensure the server is started, then let GC handle shutdown.
-    // The provider doesn't expose a close method — the server shuts down with the JVM.
-  }
 
   @Nested
   inner class GetResolvableProperties {
@@ -43,6 +40,8 @@ class MockOAuth2TestResourceProviderTest {
         "micronaut.security.oauth2.clients.backend.openid.issuer",
         "micronaut.security.oauth2.clients.backend.client-id",
         "micronaut.security.oauth2.clients.backend.client-secret",
+        "micronaut.security.token.jwt.signatures.jwks.backend.url",
+        "mock-oauth2.backend.token-endpoint-url",
       )
     }
 
@@ -51,13 +50,13 @@ class MockOAuth2TestResourceProviderTest {
       val config = mapOf("mock-oauth2.client-names" to "backend,analytics")
       val result = provider.getResolvableProperties(emptyMap(), config)
 
-      assertThat(result).hasSize(6)
+      assertThat(result).hasSize(10)
       assertThat(result).contains("micronaut.security.oauth2.clients.backend.openid.issuer")
       assertThat(result).contains("micronaut.security.oauth2.clients.analytics.openid.issuer")
-      assertThat(result).contains("micronaut.security.oauth2.clients.backend.client-id")
-      assertThat(result).contains("micronaut.security.oauth2.clients.analytics.client-id")
-      assertThat(result).contains("micronaut.security.oauth2.clients.backend.client-secret")
-      assertThat(result).contains("micronaut.security.oauth2.clients.analytics.client-secret")
+      assertThat(result).contains("micronaut.security.token.jwt.signatures.jwks.backend.url")
+      assertThat(result).contains("micronaut.security.token.jwt.signatures.jwks.analytics.url")
+      assertThat(result).contains("mock-oauth2.backend.token-endpoint-url")
+      assertThat(result).contains("mock-oauth2.analytics.token-endpoint-url")
     }
 
     @Test
@@ -74,7 +73,7 @@ class MockOAuth2TestResourceProviderTest {
       val config = mapOf("mock-oauth2.client-names" to "backend,,analytics")
       val result = provider.getResolvableProperties(emptyMap(), config)
 
-      assertThat(result).hasSize(6)
+      assertThat(result).hasSize(10)
     }
   }
 
@@ -118,6 +117,32 @@ class MockOAuth2TestResourceProviderTest {
 
       assertThat(result.isPresent).isTrue()
       assertThat(result.get()).isEqualTo("test-client-secret-backend")
+    }
+
+    @Test
+    fun `resolves JWKS URL for configured client`() {
+      val result = provider.resolve(
+        "micronaut.security.token.jwt.signatures.jwks.backend.url",
+        emptyMap(),
+        config,
+      )
+
+      assertThat(result.isPresent).isTrue()
+      assertThat(result.get()).contains("backend")
+      assertThat(result.get()).contains("jwks")
+    }
+
+    @Test
+    fun `resolves token endpoint URL for configured client`() {
+      val result = provider.resolve(
+        "mock-oauth2.backend.token-endpoint-url",
+        emptyMap(),
+        config,
+      )
+
+      assertThat(result.isPresent).isTrue()
+      assertThat(result.get()).contains("backend")
+      assertThat(result.get()).contains("token")
     }
 
     @Test
@@ -191,9 +216,81 @@ class MockOAuth2TestResourceProviderTest {
 
       assertThat(backendIssuer.get()).isNotNull()
       assertThat(analyticsIssuer.get()).isNotNull()
-      // Both should contain their respective client names in the issuer URL path.
       assertThat(backendIssuer.get()).contains("backend")
       assertThat(analyticsIssuer.get()).contains("analytics")
+    }
+  }
+
+  @Nested
+  inner class TokenEndpoint {
+
+    // Separate provider to avoid interference from other tests' server initialization.
+    // The server starts lazily with the first set of client names; a shared provider
+    // could start with different names (e.g., from ServerLifecycle) and lack the callback.
+    private val tokenProvider = MockOAuth2TestResourceProvider()
+    private val config = mapOf("mock-oauth2.client-names" to "backend")
+    private val httpClient = OkHttpClient()
+
+    @Test
+    fun `client_credentials token includes client_id claim`() {
+      val tokenEndpoint = tokenProvider.resolve(
+        "mock-oauth2.backend.token-endpoint-url",
+        emptyMap(),
+        config,
+      ).get()
+
+      val jwt = requestToken(tokenEndpoint, clientId = "my-client-id", scope = "read write")
+      val claims = SignedJWT.parse(jwt).jwtClaimsSet
+
+      assertThat(claims.getStringClaim("client_id")).isEqualTo("my-client-id")
+    }
+
+    @Test
+    fun `client_credentials token includes scope claim`() {
+      val tokenEndpoint = tokenProvider.resolve(
+        "mock-oauth2.backend.token-endpoint-url",
+        emptyMap(),
+        config,
+      ).get()
+
+      val jwt = requestToken(tokenEndpoint, clientId = "my-client-id", scope = "read write")
+      val claims = SignedJWT.parse(jwt).jwtClaimsSet
+
+      assertThat(claims.getStringClaim("scope")).isEqualTo("read write")
+    }
+
+    @Test
+    fun `client_credentials token has client_id as subject`() {
+      val tokenEndpoint = tokenProvider.resolve(
+        "mock-oauth2.backend.token-endpoint-url",
+        emptyMap(),
+        config,
+      ).get()
+
+      val jwt = requestToken(tokenEndpoint, clientId = "my-client-id", scope = "read")
+      val claims = SignedJWT.parse(jwt).jwtClaimsSet
+
+      assertThat(claims.subject).isEqualTo("my-client-id")
+    }
+
+    private fun requestToken(tokenEndpoint: String, clientId: String, scope: String): String {
+      val body = FormBody.Builder()
+        .add("grant_type", "client_credentials")
+        .add("client_id", clientId)
+        .add("client_secret", "ignored")
+        .add("scope", scope)
+        .build()
+
+      val request = Request.Builder()
+        .url(tokenEndpoint)
+        .post(body)
+        .build()
+
+      val response = httpClient.newCall(request).execute()
+      val json = response.body!!.string()
+      // Extract access_token from JSON response: {"access_token":"...","token_type":"Bearer",...}
+      val tokenMatch = Regex(""""access_token"\s*:\s*"([^"]+)"""").find(json)
+      return tokenMatch!!.groupValues[1]
     }
   }
 
@@ -202,27 +299,25 @@ class MockOAuth2TestResourceProviderTest {
 
     @Test
     fun `server starts only once across multiple resolve calls`() {
-      val config = mapOf("mock-oauth2.client-names" to "one,two")
+      val config = mapOf("mock-oauth2.client-names" to "backend,analytics")
 
       val issuer1 = provider.resolve(
-        "micronaut.security.oauth2.clients.one.openid.issuer",
+        "micronaut.security.oauth2.clients.backend.openid.issuer",
         emptyMap(),
         config,
       )
       val issuer2 = provider.resolve(
-        "micronaut.security.oauth2.clients.two.openid.issuer",
+        "micronaut.security.oauth2.clients.analytics.openid.issuer",
         emptyMap(),
         config,
       )
 
-      // Both issuers should be on the same host:port (same server instance).
       val host1 = extractHostPort(issuer1.get())
       val host2 = extractHostPort(issuer2.get())
       assertThat(host1).isEqualTo(host2)
     }
 
     private fun extractHostPort(url: String): String {
-      // URL format: http://localhost:<port>/<issuer>
       val uri = java.net.URI.create(url)
       return "${uri.host}:${uri.port}"
     }
