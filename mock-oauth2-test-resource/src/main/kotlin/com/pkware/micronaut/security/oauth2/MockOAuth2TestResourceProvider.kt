@@ -6,6 +6,7 @@ import no.nav.security.mock.oauth2.MockOAuth2Server
 import no.nav.security.mock.oauth2.OAuth2Config
 import no.nav.security.mock.oauth2.token.OAuth2TokenCallback
 import java.util.Optional
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Micronaut test-resources provider that starts an in-process [MockOAuth2Server] and provides
@@ -23,17 +24,41 @@ import java.util.Optional
  * test-resources.mock-oauth2.client-names=backend,analytics
  * ```
  *
- * The server's token endpoint for `client_credentials` grants echoes `client_id` and `scope`
- * from the request into JWT claims. This supports services that read these as explicit JWT
- * claim attributes rather than relying on the standard `sub` claim.
+ * ### Server-side scope assignment
+ *
+ * The server assigns scopes to clients based on their `client_id`, mirroring production
+ * OAuth2 providers like AWS Cognito that grant registered scopes without requiring the
+ * client to request them. Configure the mapping with:
+ *
+ * ```properties
+ * test-resources.mock-oauth2.client-credentials-scopes.<clientId>=<scope1> <scope2>
+ * ```
+ *
+ * For example:
+ * ```properties
+ * test-resources.mock-oauth2.client-credentials-scopes.00000000-0000-7000-c000-000000000003=data_center:worker platform:service
+ * ```
+ *
+ * When a matching `client_id` is found in the token request, those scopes are placed in the JWT
+ * regardless of what the client requested. Clients without a mapping fall back to echoing the
+ * requested scope.
  *
  * A single [MockOAuth2Server] instance is shared across all client names. The server starts
  * lazily on first property resolution and remains alive for the test-resources lifecycle.
+ * The scope map is updated on each resolve call so that any module's scope configuration
+ * is applied before token requests are made.
  */
 public class MockOAuth2TestResourceProvider : TestResourcesResolver {
 
   @Volatile
   private var server: MockOAuth2Server? = null
+
+  /**
+   * Shared map of `client_id` → space-separated scope string, updated from each module's
+   * test-resources configuration. Shared by reference with all [ClientCredentialsTokenCallback]
+   * instances so scope assignments are visible regardless of which module started the server.
+   */
+  private val clientScopeMap: ConcurrentHashMap<String, String> = ConcurrentHashMap()
 
   override fun getDisplayName(): String = "Mock OAuth2 Server"
 
@@ -52,6 +77,11 @@ public class MockOAuth2TestResourceProvider : TestResourcesResolver {
   ): Optional<String> {
     val clientNames = resolveClientNames(testResourcesConfig)
     if (clientNames.isEmpty()) return Optional.empty()
+
+    // Update scope map from this module's config before using the server.
+    // All resolve calls run before any application code makes token requests,
+    // so the map is fully populated before the first client credentials grant.
+    updateClientScopeMap(testResourcesConfig)
 
     val runningServer = ensureServerStarted(clientNames)
 
@@ -86,7 +116,7 @@ public class MockOAuth2TestResourceProvider : TestResourcesResolver {
     server?.let { return it }
     synchronized(this) {
       server?.let { return it }
-      val callbacks = clientNames.map { name -> ClientCredentialsTokenCallback(name) }.toSet()
+      val callbacks = clientNames.map { name -> ClientCredentialsTokenCallback(name, clientScopeMap) }.toSet()
       val config = OAuth2Config(
         interactiveLogin = false,
         tokenCallbacks = callbacks,
@@ -99,14 +129,37 @@ public class MockOAuth2TestResourceProvider : TestResourcesResolver {
   }
 
   /**
-   * Token callback for `client_credentials` grants that echoes `client_id` and `scope`
-   * from the token request into JWT claims.
+   * Reads scope entries from test-resources config and adds them to [clientScopeMap].
    *
-   * The default [no.nav.security.mock.oauth2.token.DefaultOAuth2TokenCallback] only sets
-   * `sub` to the client ID. Most real OAuth2 providers (AWS Cognito, Auth0, Okta) include
-   * `client_id` and `scope` as explicit claims in access tokens, so we match that behavior.
+   * Reads all properties under the [CLIENT_CREDENTIALS_SCOPES_PREFIX] prefix in the form
+   * `mock-oauth2.client-credentials-scopes.<clientId>=<scope>`.
    */
-  private class ClientCredentialsTokenCallback(private val id: String) : OAuth2TokenCallback {
+  private fun updateClientScopeMap(testResourcesConfig: Map<String, Any>) {
+    val prefix = "$CLIENT_CREDENTIALS_SCOPES_PREFIX."
+    for ((key, value) in testResourcesConfig) {
+      if (key.startsWith(prefix)) {
+        val clientId = key.removePrefix(prefix)
+        val scope = value as? String ?: continue
+        if (clientId.isNotEmpty() && scope.isNotEmpty()) {
+          clientScopeMap[clientId] = scope
+        }
+      }
+    }
+  }
+
+  /**
+   * Token callback for `client_credentials` grants that assigns scopes server-side based on
+   * `client_id`, mirroring production OAuth2 providers like AWS Cognito.
+   *
+   * Scopes are resolved in priority order:
+   * 1. Server-configured scopes from [clientScopes] keyed by `client_id`.
+   * 2. Client-requested scopes from the token request (fallback for unconfigured clients).
+   *
+   * The `client_id` claim is always included so that validators like
+   * [recurse.site.security.CognitoTokenValidator] can look up the caller's identity.
+   */
+  private class ClientCredentialsTokenCallback(private val id: String, private val clientScopes: Map<String, String>) :
+    OAuth2TokenCallback {
     override fun issuerId(): String = id
     override fun typeHeader(tokenRequest: TokenRequest): String = "JWT"
     override fun tokenExpiry(): Long = 3600
@@ -116,8 +169,13 @@ public class MockOAuth2TestResourceProvider : TestResourcesResolver {
     override fun audience(tokenRequest: TokenRequest): List<String> = listOf("default")
 
     override fun addClaims(tokenRequest: TokenRequest): Map<String, Any> = buildMap {
-      extractClientId(tokenRequest)?.let { put("client_id", it) }
-      tokenRequest.scope?.toString()?.let { put("scope", it) }
+      val clientId = extractClientId(tokenRequest)
+      if (clientId != null) put("client_id", clientId)
+      // Server-configured scopes take precedence over client-requested scopes,
+      // mirroring production behavior where the OAuth2 server assigns scopes based on
+      // client registration rather than on what the client requests.
+      val scope = clientId?.let { clientScopes[it] } ?: tokenRequest.scope?.toString()
+      if (scope != null) put("scope", scope)
     }
 
     private fun extractClientId(tokenRequest: TokenRequest): String? =
@@ -127,6 +185,15 @@ public class MockOAuth2TestResourceProvider : TestResourcesResolver {
 
   private companion object {
     private const val CLIENT_NAMES_KEY = "mock-oauth2.client-names"
+
+    /**
+     * Prefix for server-side scope assignment config entries.
+     *
+     * Full property path: `test-resources.mock-oauth2.client-credentials-scopes.<clientId>`.
+     * The `test-resources.` prefix is stripped by the test-resources framework before reaching
+     * this provider, so entries arrive as `mock-oauth2.client-credentials-scopes.<clientId>`.
+     */
+    private const val CLIENT_CREDENTIALS_SCOPES_PREFIX = "mock-oauth2.client-credentials-scopes"
 
     fun resolveClientNames(testResourcesConfig: Map<String, Any>): List<String> {
       val raw = testResourcesConfig[CLIENT_NAMES_KEY] as? String ?: return emptyList()

@@ -8,6 +8,7 @@ import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNotEmpty
 import assertk.assertions.isNotNull
+import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import com.nimbusds.jwt.SignedJWT
 import okhttp3.FormBody
@@ -289,6 +290,110 @@ class MockOAuth2TestResourceProviderTest {
       val response = httpClient.newCall(request).execute()
       val json = response.body!!.string()
       // Extract access_token from JSON response: {"access_token":"...","token_type":"Bearer",...}
+      val tokenMatch = Regex(""""access_token"\s*:\s*"([^"]+)"""").find(json)
+      return tokenMatch!!.groupValues[1]
+    }
+  }
+
+  @Nested
+  inner class ServerSideScopes {
+
+    // Separate provider per test class to avoid shared server state.
+    private val scopedProvider = MockOAuth2TestResourceProvider()
+    private val httpClient = OkHttpClient()
+
+    private val baseConfig = mapOf("mock-oauth2.client-names" to "cognito")
+    private val configWithScopes = baseConfig + mapOf(
+      "mock-oauth2.client-credentials-scopes.registered-client" to "service:read service:write",
+    )
+
+    @Test
+    fun `registered client gets server-assigned scopes without requesting any`() {
+      val tokenEndpoint = scopedProvider.resolve(
+        "mock-oauth2.cognito.token-endpoint-url",
+        emptyMap(),
+        configWithScopes,
+      ).get()
+
+      val jwt = requestToken(tokenEndpoint, clientId = "registered-client", scope = null)
+      val claims = SignedJWT.parse(jwt).jwtClaimsSet
+
+      assertThat(claims.getStringClaim("scope")).isEqualTo("service:read service:write")
+    }
+
+    @Test
+    fun `server-assigned scopes override any scope the client requests`() {
+      val tokenEndpoint = scopedProvider.resolve(
+        "mock-oauth2.cognito.token-endpoint-url",
+        emptyMap(),
+        configWithScopes,
+      ).get()
+
+      val jwt = requestToken(tokenEndpoint, clientId = "registered-client", scope = "wrong:scope")
+      val claims = SignedJWT.parse(jwt).jwtClaimsSet
+
+      assertThat(claims.getStringClaim("scope")).isEqualTo("service:read service:write")
+    }
+
+    @Test
+    fun `unregistered client echoes back its requested scope`() {
+      val tokenEndpoint = scopedProvider.resolve(
+        "mock-oauth2.cognito.token-endpoint-url",
+        emptyMap(),
+        configWithScopes,
+      ).get()
+
+      val jwt = requestToken(tokenEndpoint, clientId = "unknown-client", scope = "arbitrary:scope")
+      val claims = SignedJWT.parse(jwt).jwtClaimsSet
+
+      assertThat(claims.getStringClaim("scope")).isEqualTo("arbitrary:scope")
+    }
+
+    @Test
+    fun `unregistered client with no scope request gets no scope claim`() {
+      val tokenEndpoint = scopedProvider.resolve(
+        "mock-oauth2.cognito.token-endpoint-url",
+        emptyMap(),
+        configWithScopes,
+      ).get()
+
+      val jwt = requestToken(tokenEndpoint, clientId = "unknown-client", scope = null)
+      val claims = SignedJWT.parse(jwt).jwtClaimsSet
+
+      assertThat(claims.getStringClaim("scope")).isNull()
+    }
+
+    @Test
+    fun `scope map is updated from subsequent resolve calls`() {
+      // Start server with no scope config.
+      val tokenEndpoint = scopedProvider.resolve(
+        "mock-oauth2.cognito.token-endpoint-url",
+        emptyMap(),
+        baseConfig,
+      ).get()
+
+      // A later resolve call from a different module adds the scope mapping.
+      scopedProvider.resolve("mock-oauth2.cognito.token-endpoint-url", emptyMap(), configWithScopes)
+
+      // By the time any real token request fires, all resolve calls have completed,
+      // so the updated mapping applies.
+      val jwt = requestToken(tokenEndpoint, clientId = "registered-client", scope = null)
+      val claims = SignedJWT.parse(jwt).jwtClaimsSet
+
+      assertThat(claims.getStringClaim("scope")).isEqualTo("service:read service:write")
+    }
+
+    private fun requestToken(tokenEndpoint: String, clientId: String, scope: String?): String {
+      val bodyBuilder = FormBody.Builder()
+        .add("grant_type", "client_credentials")
+        .add("client_id", clientId)
+        .add("client_secret", "ignored")
+      if (scope != null) bodyBuilder.add("scope", scope)
+      val body = bodyBuilder.build()
+
+      val request = Request.Builder().url(tokenEndpoint).post(body).build()
+      val response = httpClient.newCall(request).execute()
+      val json = response.body!!.string()
       val tokenMatch = Regex(""""access_token"\s*:\s*"([^"]+)"""").find(json)
       return tokenMatch!!.groupValues[1]
     }
