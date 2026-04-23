@@ -34,3 +34,9 @@ jobs:
       with:
         name: Test Results Linux
         path: '**/test-results/**/*.xml'
+
+    - name: Publish Test Report
+      uses: mikepenz/action-junit-report@v6.4.0
+      if: always()
+      with:
+        report_paths: '**/test-results/**/TEST-*.xml'
