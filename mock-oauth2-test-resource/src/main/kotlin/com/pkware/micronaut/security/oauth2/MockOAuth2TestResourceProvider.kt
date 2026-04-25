@@ -54,6 +54,16 @@ public class MockOAuth2TestResourceProvider : TestResourcesResolver {
   private var server: MockOAuth2Server? = null
 
   /**
+   * All client names that have ever been registered with this provider.
+   *
+   * Used to detect when a new resolve call brings in a client name that was not present when
+   * the server was first started. In that case [ensureServerStarted] shuts down and restarts
+   * the server on the same port, this time including [ClientCredentialsTokenCallback] instances
+   * for every accumulated client name.
+   */
+  private val registeredClientNames: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
+  /**
    * Shared map of `client_id` → space-separated scope string, updated from each module's
    * test-resources configuration. Shared by reference with all [ClientCredentialsTokenCallback]
    * instances so scope assignments are visible regardless of which module started the server.
@@ -112,17 +122,47 @@ public class MockOAuth2TestResourceProvider : TestResourcesResolver {
       else -> Optional.empty()
     }
 
+  /**
+   * Starts the server if not yet running, or restarts it on the same port if new client names
+   * have arrived that weren't present at last startup.
+   *
+   * The test-resources JVM is shared across all Gradle modules. When multiple modules each
+   * configure their own `test-resources.mock-oauth2.client-names`, the first module to resolve
+   * starts the server. Later modules may bring new names that need their own
+   * [ClientCredentialsTokenCallback]. Without a restart those tokens would be handled by
+   * [no.nav.security.mock.oauth2.token.DefaultOAuth2TokenCallback], which omits the `client_id`
+   * claim and breaks validators like [recurse.site.security.CognitoTokenValidator].
+   *
+   * Restarting on the same port preserves already-resolved URLs (issuer, JWKS, token endpoint).
+   */
   private fun ensureServerStarted(clientNames: List<String>): MockOAuth2Server {
-    server?.let { return it }
+    // Fast path: server running and all names already registered.
+    val currentServer = server
+    if (currentServer != null && registeredClientNames.containsAll(clientNames)) {
+      return currentServer
+    }
+
     synchronized(this) {
-      server?.let { return it }
-      val callbacks = clientNames.map { name -> ClientCredentialsTokenCallback(name, clientScopeMap) }.toSet()
-      val config = OAuth2Config(
-        interactiveLogin = false,
-        tokenCallbacks = callbacks,
-      )
+      val newNames = clientNames.filter { it !in registeredClientNames }
+      val existingServer = server
+
+      if (newNames.isEmpty() && existingServer != null) {
+        return existingServer
+      }
+
+      // Record the port before shutdown so we can reuse it — resolved URLs (issuer, JWKS,
+      // token endpoint) are already cached by the test context and must not change.
+      val port = existingServer?.baseUrl()?.port ?: 0
+      existingServer?.shutdown()
+
+      registeredClientNames.addAll(clientNames)
+
+      val allCallbacks = registeredClientNames
+        .map { name -> ClientCredentialsTokenCallback(name, clientScopeMap) }
+        .toSet()
+      val config = OAuth2Config(interactiveLogin = false, tokenCallbacks = allCallbacks)
       val newServer = MockOAuth2Server(config)
-      newServer.start()
+      newServer.start(port)
       server = newServer
       return newServer
     }

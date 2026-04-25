@@ -427,4 +427,57 @@ class MockOAuth2TestResourceProviderTest {
       return "${uri.host}:${uri.port}"
     }
   }
+
+  /**
+   * Tests that the server picks up client names registered by later resolve calls.
+   *
+   * This covers the real-world scenario where multiple Gradle modules each configure
+   * their own `test-resources.mock-oauth2.client-names`. The test-resources JVM is
+   * shared across all modules: whichever module's tests run first starts the server,
+   * and later modules must still get correct `ClientCredentialsTokenCallback` instances.
+   */
+  @Nested
+  inner class LateClientNameRegistration {
+
+    private val lateProvider = MockOAuth2TestResourceProvider()
+    private val httpClient = OkHttpClient()
+
+    @Test
+    fun `second set of client names gets ClientCredentialsTokenCallback, not DefaultOAuth2TokenCallback`() {
+      // Simulate: first module starts server with "backend".
+      val backendConfig = mapOf("mock-oauth2.client-names" to "backend")
+      lateProvider.resolve("mock-oauth2.backend.token-endpoint-url", emptyMap(), backendConfig)
+
+      // Simulate: second module later resolves its client name "cognito".
+      val cognitoConfig = mapOf("mock-oauth2.client-names" to "cognito")
+      val tokenEndpoint = lateProvider.resolve(
+        "mock-oauth2.cognito.token-endpoint-url",
+        emptyMap(),
+        cognitoConfig,
+      ).get()
+
+      // Token for "cognito" issuer must include the client_id claim.
+      // DefaultOAuth2TokenCallback only adds {"tid": issuerId} — no client_id.
+      // ClientCredentialsTokenCallback adds client_id from the token request.
+      val jwt = requestToken(tokenEndpoint, clientId = "some-client-id", scope = "read")
+      val claims = SignedJWT.parse(jwt).jwtClaimsSet
+
+      assertThat(claims.getStringClaim("client_id")).isEqualTo("some-client-id")
+    }
+
+    private fun requestToken(tokenEndpoint: String, clientId: String, scope: String): String {
+      val body = FormBody.Builder()
+        .add("grant_type", "client_credentials")
+        .add("client_id", clientId)
+        .add("client_secret", "ignored")
+        .add("scope", scope)
+        .build()
+
+      val request = Request.Builder().url(tokenEndpoint).post(body).build()
+      val response = httpClient.newCall(request).execute()
+      val json = response.body!!.string()
+      val tokenMatch = Regex(""""access_token"\s*:\s*"([^"]+)"""").find(json)
+      return tokenMatch!!.groupValues[1]
+    }
+  }
 }
