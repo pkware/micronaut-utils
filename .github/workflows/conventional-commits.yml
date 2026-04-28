@@ -12,9 +12,12 @@ jobs:
     name: Validate commit messages
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Check commit messages
-        run: .github/scripts/validate-commits.sh ${{ github.base_ref }}
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: .github/scripts/validate-commits.sh "$BASE_REF"
