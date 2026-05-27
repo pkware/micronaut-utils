@@ -30,6 +30,6 @@ repositories {
 
 dependencies {
   implementation(kotlin("gradle-plugin"))
-  implementation("com.diffplug.spotless:spotless-plugin-gradle:8.5.1")
+  implementation("com.diffplug.spotless:spotless-plugin-gradle:8.6.0")
   implementation("dev.detekt:dev.detekt.gradle.plugin:2.0.0-alpha.3")
 }
