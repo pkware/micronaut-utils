@@ -29,7 +29,7 @@ pluginManagement {
 }
 
 plugins {
-  id("com.gradle.develocity") version "4.4.2"
+  id("com.gradle.develocity") version "4.4.3"
   id("io.micronaut.platform.catalog") version "4.6.2"
 }
 
