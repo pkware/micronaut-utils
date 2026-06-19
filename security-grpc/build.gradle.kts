@@ -20,7 +20,7 @@ dependencies {
   implementation(mn.micronaut.router) {
     because("GrpcMethodRouteMatch adapts ExecutableMethod as MethodBasedRouteMatch for SecuredAnnotationRule")
   }
-  implementation(mn.reactor)
+  implementation(mn.micronaut.reactor)
 
   ksp(mn.micronaut.inject.kotlin)
 
