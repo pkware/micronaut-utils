@@ -63,11 +63,6 @@ dependencies {
 }
 ```
 
-## Requirements
-
-- Java 21+
-- Micronaut 4.x
-
 ## License
 
 [MIT](LICENSE) — PKWARE, Inc.
