@@ -11,7 +11,7 @@ dependencies {
   api(mn.micronaut.jdbc)
 
   implementation(mn.micronaut.jdbc.hikari)
-  implementation(mn.reactor)
+  implementation(mn.micronaut.reactor)
 
   ksp(mn.micronaut.inject.kotlin)
 
