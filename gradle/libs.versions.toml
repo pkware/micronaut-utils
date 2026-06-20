@@ -6,6 +6,7 @@ micronaut = "5.0.1"
 # Also set in settings.gradle.kts
 micronautPlugin = "5.0.1"
 mockito = "5.23.0"
+moshi = "1.15.2"
 
 [libraries]
 assertk = "com.willowtreeapps.assertk:assertk:0.28.1"
@@ -17,7 +18,8 @@ mock-oauth2-server = "no.nav.security:mock-oauth2-server:4.0.1"
 mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
 mockito-junit = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mockito" }
 mockito-kotlin = "org.mockito.kotlin:mockito-kotlin:6.3.0"
-moshi = "com.squareup.moshi:moshi:1.15.2"
+moshi = { module = "com.squareup.moshi:moshi", version.ref = "moshi" }
+moshi-codegen = { module = "com.squareup.moshi:moshi-kotlin-codegen", version.ref = "moshi" }
 
 [plugins]
 kotlin-allOpen = "org.jetbrains.kotlin.plugin.allopen:2.4.0"
