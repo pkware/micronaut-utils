@@ -60,8 +60,10 @@ internal class TestInstanceLifecycleValidator : BeforeAllCallback {
         val reason = when {
           implementsTestPropertyProvider && usesMockitoExtension ->
             "implements TestPropertyProvider and uses @ExtendWith(MockitoExtension::class)"
+
           implementsTestPropertyProvider ->
             "implements TestPropertyProvider"
+
           else ->
             "uses @ExtendWith(MockitoExtension::class)"
         }
