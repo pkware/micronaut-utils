@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.8.0](https://github.com/pkware/micronaut-utils/compare/v0.7.1...v0.8.0) (2026-06-21)
+
+
+### Features
+
+* **json-moshi:** add Moshi-backed JsonMapper integration ([a0ad822](https://github.com/pkware/micronaut-utils/commit/a0ad822ef1e7254fa38878262193f75b2359f9c7))
+
+
+### Bug Fixes
+
+* **build:** anchor GraalVM native plugin in root classloader ([d8c2128](https://github.com/pkware/micronaut-utils/commit/d8c212870d9651d67acd07690d2e1f60ee31f802))
+* complete the Micronaut 5 upgrade (framework version, Java 25, reactor accessor) ([da19c9c](https://github.com/pkware/micronaut-utils/commit/da19c9c23e76526e1c74ae9010bbc9858b80620e))
+* **deps:** anchor ktlint version to Maven artifact for Renovate ([1c2cf1a](https://github.com/pkware/micronaut-utils/commit/1c2cf1a062a1e78dc6f4a936660f5b5c9edbab49))
+* **deps:** update ktlint to v1.8.0 ([fe093b0](https://github.com/pkware/micronaut-utils/commit/fe093b0d71b22218b461e6080e71fb3a738e4c2b))
+
 ## [0.7.1](https://github.com/pkware/micronaut-utils/compare/v0.7.0...v0.7.1) (2026-06-19)
 
 
