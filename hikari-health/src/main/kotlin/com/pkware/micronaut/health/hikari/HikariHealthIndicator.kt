@@ -2,7 +2,6 @@ package com.pkware.micronaut.health.hikari
 
 import com.zaxxer.hikari.HikariDataSource
 import io.micronaut.context.annotation.Requires
-import io.micronaut.core.annotation.Nullable
 import io.micronaut.core.util.StringUtils
 import io.micronaut.health.HealthStatus
 import io.micronaut.jdbc.DataSourceResolver
@@ -47,7 +46,7 @@ import javax.sql.DataSource
 @Requires(beans = [DataSource::class])
 public class HikariHealthIndicator(
   dataSources: Array<DataSource>,
-  @Nullable dataSourceResolver: DataSourceResolver?,
+  dataSourceResolver: DataSourceResolver?,
   @param:Named(TaskExecutors.BLOCKING) private val blockingExecutor: ExecutorService,
   private val healthAggregator: HealthAggregator<*>,
 ) : HealthIndicator {

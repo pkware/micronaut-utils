@@ -50,8 +50,8 @@ final class GrpcMethodRouteMatch implements MethodBasedRouteMatch<Object, Object
   }
 
   @Override
-  public @Nullable Object getTarget() {
-    return null;
+  public Object getTarget() {
+    throw new UnsupportedOperationException("gRPC route match has no invocation target");
   }
 
   @SuppressWarnings("unchecked")
@@ -97,7 +97,7 @@ final class GrpcMethodRouteMatch implements MethodBasedRouteMatch<Object, Object
   }
 
   @Override
-  public Object invoke(Object... arguments) {
+  public Object invoke(@Nullable Object... arguments) {
     throw new UnsupportedOperationException("gRPC methods are not invoked via RouteMatch");
   }
 

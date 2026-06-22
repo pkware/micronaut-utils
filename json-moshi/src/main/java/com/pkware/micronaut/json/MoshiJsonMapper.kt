@@ -4,7 +4,6 @@ import com.squareup.moshi.JsonEncodingException
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import io.micronaut.context.annotation.BootstrapContextCompatible
-import io.micronaut.core.annotation.NonNull
 import io.micronaut.core.serialize.exceptions.SerializationException
 import io.micronaut.core.type.Argument
 import io.micronaut.json.JsonMapper
@@ -27,20 +26,20 @@ import java.lang.reflect.Type
 @BootstrapContextCompatible
 internal class MoshiJsonMapper(private val moshi: Moshi) : JsonMapper {
 
-  override fun <T : Any> readValueFromTree(tree: JsonNode, type: @NonNull Argument<T>): T? {
+  override fun <T : Any> readValueFromTree(tree: JsonNode, type: Argument<T>): T? {
     val adapter = moshi.adapter<Any?>(type.reflectType())
     @Suppress("UNCHECKED_CAST")
     return adapter.fromJsonValue(tree.toPlainValue()) as T?
   }
 
-  override fun <T : Any> readValue(inputStream: InputStream, type: @NonNull Argument<T>): T? {
+  override fun <T : Any> readValue(inputStream: InputStream, type: Argument<T>): T? {
     inputStream.source().buffer().use { source ->
       @Suppress("UNCHECKED_CAST")
       return readFrom(source, type) as T?
     }
   }
 
-  override fun <T : Any> readValue(byteArray: ByteArray, type: @NonNull Argument<T>): T? {
+  override fun <T : Any> readValue(byteArray: ByteArray, type: Argument<T>): T? {
     Buffer().use { buffer ->
       buffer.write(byteArray)
       @Suppress("UNCHECKED_CAST")
@@ -54,7 +53,7 @@ internal class MoshiJsonMapper(private val moshi: Moshi) : JsonMapper {
     return JsonNode.from(adapter.toJsonValue(value) ?: return JsonNode.nullNode())
   }
 
-  override fun <T : Any> writeValueToTree(type: @NonNull Argument<T>, value: T?): JsonNode {
+  override fun <T : Any> writeValueToTree(type: Argument<T>, value: T?): JsonNode {
     if (value == null) return JsonNode.nullNode()
     val adapter = moshi.adapter<Any?>(type.reflectType())
     return JsonNode.from(adapter.toJsonValue(value) ?: return JsonNode.nullNode())
@@ -65,7 +64,7 @@ internal class MoshiJsonMapper(private val moshi: Moshi) : JsonMapper {
     writeTo(outputStream.sink().buffer(), `object`.classForMoshi(), `object`)
   }
 
-  override fun <T : Any> writeValue(outputStream: OutputStream, type: @NonNull Argument<T>, `object`: T?) {
+  override fun <T : Any> writeValue(outputStream: OutputStream, type: Argument<T>, `object`: T?) {
     // The caller owns the OutputStream, so the sink must not be closed here.
     writeTo(outputStream.sink().buffer(), type.reflectType(), `object`)
   }
@@ -76,7 +75,7 @@ internal class MoshiJsonMapper(private val moshi: Moshi) : JsonMapper {
     return sink.readByteArray()
   }
 
-  override fun <T : Any> writeValueAsBytes(type: @NonNull Argument<T>, `object`: T?): ByteArray {
+  override fun <T : Any> writeValueAsBytes(type: Argument<T>, `object`: T?): ByteArray {
     val sink = Buffer()
     writeTo(sink, type.reflectType(), `object`)
     return sink.readByteArray()

@@ -179,7 +179,7 @@ public final class GrpcSecurityInterceptor implements ServerInterceptor, Ordered
    *       explicitly rejected the caller based on auth/authz criteria.</li>
    * </ul>
    */
-  private Optional<SecurityRuleResult> evaluateRules(HttpRequest<?> request, @io.micronaut.core.annotation.Nullable Authentication authentication) {
+  private Optional<SecurityRuleResult> evaluateRules(HttpRequest<?> request, @Nullable Authentication authentication) {
     SecurityRuleResult result = Flux.fromIterable(securityRules)
       .concatMap(rule -> Mono.from(rule.check(request, authentication))
         .defaultIfEmpty(SecurityRuleResult.UNKNOWN)
@@ -196,7 +196,7 @@ public final class GrpcSecurityInterceptor implements ServerInterceptor, Ordered
    * Delegates to Micronaut Security's {@link AuthenticationFetcher} chain via a
    * synthetic {@link HttpRequest} built from gRPC {@link Metadata}.
    */
-  private @io.micronaut.core.annotation.Nullable Authentication authenticate(HttpRequest<?> syntheticRequest) {
+  private @Nullable Authentication authenticate(HttpRequest<?> syntheticRequest) {
     Timer.Sample sample = Timer.start(meterRegistry);
     try {
       return Flux.fromIterable(authenticationFetchers)
