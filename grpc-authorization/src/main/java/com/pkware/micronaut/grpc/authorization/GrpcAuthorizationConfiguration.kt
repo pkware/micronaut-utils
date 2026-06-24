@@ -1,25 +1,22 @@
-package com.pkware.micronaut.grpc.authorization;
+package com.pkware.micronaut.grpc.authorization
 
-import io.micronaut.context.annotation.ConfigurationProperties;
-import org.jspecify.annotations.Nullable;
-
-import java.util.List;
+import io.micronaut.context.annotation.ConfigurationProperties
 
 /**
- * Configuration for {@link GrpcAuthorizationInterceptor}.
+ * Configuration for [GrpcAuthorizationInterceptor].
  *
- * <p>{@code anonymousServices} lists gRPC service names (the portion of a full method name before
- * the {@code /}, e.g. {@code grpc.health.v1.Health}) whose methods are reachable without a principal.
- * Intended for third-party services that cannot carry {@code @RolesAllowed}. Combined with
+ * `anonymousServices` lists gRPC service names (the portion of a full method name before
+ * the `/`, e.g. `grpc.health.v1.Health`) whose methods are reachable without a principal.
+ * Intended for third-party services that cannot carry `@RolesAllowed`. Combined with
  * deny-by-default, nothing is anonymous unless explicitly listed.
  *
- * <p>An interface: Micronaut generates the binding implementation. The getter must be abstract —
- * a {@code default} method would be treated as a fixed implementation and the property would never
- * bind. Returns {@code null} when unset; the interceptor treats that as the empty list.
+ *
+ * An interface: Micronaut generates the binding implementation. The getter must be abstract —
+ * a `default` method would be treated as a fixed implementation and the property would never
+ * bind. Returns `null` when unset; the interceptor treats that as the empty list.
  */
 @ConfigurationProperties("grpc.authorization")
 public interface GrpcAuthorizationConfiguration {
-
-  /** gRPC service names reachable without authentication, or {@code null} if none configured. */
-  @Nullable List<String> getAnonymousServices();
+  /** gRPC service names reachable without authentication, or `null` if none configured.  */
+  public val anonymousServices: List<String>?
 }

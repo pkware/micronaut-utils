@@ -1,99 +1,117 @@
-package com.pkware.micronaut.grpc.authorization;
+package com.pkware.micronaut.grpc.authorization
 
-import io.grpc.BindableService;
-import io.grpc.MethodDescriptor;
-import io.grpc.ServerServiceDefinition;
-import io.grpc.ServiceDescriptor;
-import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
-import jakarta.annotation.security.RolesAllowed;
-import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
-import org.junit.jupiter.api.Test;
-
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.util.Set;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import assertk.assertThat
+import assertk.assertions.containsOnly
+import assertk.assertions.isNotNull
+import assertk.assertions.isNull
+import io.grpc.BindableService
+import io.grpc.MethodDescriptor
+import io.grpc.ServerCallHandler
+import io.grpc.ServerServiceDefinition
+import io.grpc.ServiceDescriptor
+import io.micronaut.test.extensions.junit5.annotation.MicronautTest
+import jakarta.annotation.security.RolesAllowed
+import jakarta.inject.Inject
+import jakarta.inject.Singleton
+import org.junit.jupiter.api.Test
+import java.io.ByteArrayInputStream
+import java.io.InputStream
 
 /**
- * Integration tests for {@link GrpcScopeRegistry}. Uses real Micronaut beans with {@code @RolesAllowed}
+ * Integration tests for [GrpcScopeRegistry]. Uses real Micronaut beans with `@RolesAllowed`
  * methods; the security-grpc-processor on the test annotation processor classpath generates the
- * {@code ExecutableMethod} metadata the registry reads at startup. No {@code java.lang.reflect}.
+ * `ExecutableMethod` metadata the registry reads at startup. No `java.lang.reflect`.
  */
 @MicronautTest(startApplication = false)
-class GrpcScopeRegistryTest {
-
+internal class GrpcScopeRegistryTest {
   @Inject
-  GrpcScopeRegistry registry;
+  lateinit var registry: GrpcScopeRegistry
 
   @Test
-  void annotatedMethodAppearsWithItsScopes() {
-    assertEquals(Set.of("deployment:worker"), registry.requiredScopes("test.Alpha/SecuredWork"));
+  fun annotatedMethodAppearsWithItsScopes() {
+    assertThat(registry.requiredScopes("test.Alpha/securedWork")).isNotNull().containsOnly("deployment:worker")
   }
 
   @Test
-  void multipleScopesPreserved() {
-    assertEquals(Set.of("role:admin", "role:user"), registry.requiredScopes("test.Alpha/MultiRole"));
+  fun multipleScopesPreserved() {
+    assertThat(registry.requiredScopes("test.Alpha/multiRole")).isNotNull().containsOnly("role:admin", "role:user")
   }
 
   @Test
-  void unannotatedMethodAbsent() {
-    assertNull(registry.requiredScopes("test.Alpha/PlainWork"));
+  fun unannotatedMethodAbsent() {
+    assertThat(registry.requiredScopes("test.Alpha/plainWork")).isNull()
   }
 
   @Test
-  void secondServiceMethodAppears() {
-    assertEquals(Set.of("scope:beta"), registry.requiredScopes("test.Beta/BetaWork"));
+  fun secondServiceMethodAppears() {
+    assertThat(registry.requiredScopes("test.Beta/betaWork")).isNotNull().containsOnly("scope:beta")
   }
 
   @Test
-  void unknownMethodAbsent() {
-    assertNull(registry.requiredScopes("unknown.Service/Unknown"));
+  fun unknownMethodAbsent() {
+    assertThat(registry.requiredScopes("unknown.Service/Unknown")).isNull()
   }
 
-  private static final MethodDescriptor.Marshaller<byte[]> BYTES = new MethodDescriptor.Marshaller<>() {
-    @Override public InputStream stream(byte[] value) { return new ByteArrayInputStream(value); }
-    @Override public byte[] parse(InputStream stream) { return new byte[0]; }
-  };
+  @Singleton
+  internal class AlphaService : BindableService {
+    @RolesAllowed("deployment:worker")
+    fun securedWork() {
+      // No-op: bean carries @RolesAllowed metadata only.
+    }
 
-  private static MethodDescriptor<byte[], byte[]> method(String service, String name) {
-    return MethodDescriptor.<byte[], byte[]>newBuilder()
+    @RolesAllowed("role:admin", "role:user")
+    fun multiRole() {
+      // No-op: bean carries @RolesAllowed metadata only.
+    }
+
+    fun plainWork() {
+      // No-op: unannotated method, expected absent from the registry.
+    }
+
+    override fun bindService(): ServerServiceDefinition {
+      val secured = method("test.Alpha", "securedWork")
+      val multi = method("test.Alpha", "multiRole")
+      val plain = method("test.Alpha", "plainWork")
+      val descriptor = ServiceDescriptor.newBuilder("test.Alpha")
+        .addMethod(secured).addMethod(multi).addMethod(plain).build()
+      return ServerServiceDefinition.builder(descriptor)
+        .addMethod(secured, UNSUPPORTED_HANDLER)
+        .addMethod(multi, UNSUPPORTED_HANDLER)
+        .addMethod(plain, UNSUPPORTED_HANDLER)
+        .build()
+    }
+  }
+
+  @Singleton
+  internal class BetaService : BindableService {
+    @RolesAllowed("scope:beta")
+    fun betaWork() {
+      // No-op: bean carries @RolesAllowed metadata only.
+    }
+
+    override fun bindService(): ServerServiceDefinition {
+      val beta = method("test.Beta", "betaWork")
+      val descriptor = ServiceDescriptor.newBuilder("test.Beta").addMethod(beta).build()
+      return ServerServiceDefinition.builder(descriptor)
+        .addMethod(beta, UNSUPPORTED_HANDLER)
+        .build()
+    }
+  }
+
+  companion object {
+    private val BYTES: MethodDescriptor.Marshaller<ByteArray> = object : MethodDescriptor.Marshaller<ByteArray> {
+      override fun stream(value: ByteArray): InputStream = ByteArrayInputStream(value)
+
+      override fun parse(stream: InputStream): ByteArray = ByteArray(0)
+    }
+
+    private val UNSUPPORTED_HANDLER =
+      ServerCallHandler<ByteArray, ByteArray> { _, _ -> throw UnsupportedOperationException() }
+
+    private fun method(service: String, name: String): MethodDescriptor<ByteArray, ByteArray> =
+      MethodDescriptor.newBuilder<ByteArray, ByteArray>()
         .setType(MethodDescriptor.MethodType.UNARY)
         .setFullMethodName(MethodDescriptor.generateFullMethodName(service, name))
-        .setRequestMarshaller(BYTES).setResponseMarshaller(BYTES).build();
-  }
-
-  @Singleton
-  static class AlphaService implements BindableService {
-    @RolesAllowed("deployment:worker") public void SecuredWork() {}
-    @RolesAllowed({"role:admin", "role:user"}) public void MultiRole() {}
-    public void PlainWork() {}
-
-    @Override public ServerServiceDefinition bindService() {
-      var secured = method("test.Alpha", "SecuredWork");
-      var multi = method("test.Alpha", "MultiRole");
-      var plain = method("test.Alpha", "PlainWork");
-      var descriptor = ServiceDescriptor.newBuilder("test.Alpha")
-          .addMethod(secured).addMethod(multi).addMethod(plain).build();
-      return ServerServiceDefinition.builder(descriptor)
-          .addMethod(secured, (c, h) -> { throw new UnsupportedOperationException(); })
-          .addMethod(multi, (c, h) -> { throw new UnsupportedOperationException(); })
-          .addMethod(plain, (c, h) -> { throw new UnsupportedOperationException(); })
-          .build();
-    }
-  }
-
-  @Singleton
-  static class BetaService implements BindableService {
-    @RolesAllowed("scope:beta") public void BetaWork() {}
-
-    @Override public ServerServiceDefinition bindService() {
-      var beta = method("test.Beta", "BetaWork");
-      var descriptor = ServiceDescriptor.newBuilder("test.Beta").addMethod(beta).build();
-      return ServerServiceDefinition.builder(descriptor)
-          .addMethod(beta, (c, h) -> { throw new UnsupportedOperationException(); }).build();
-    }
+        .setRequestMarshaller(BYTES).setResponseMarshaller(BYTES).build()
   }
 }
