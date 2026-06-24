@@ -15,4 +15,5 @@ dependencies {
   testAnnotationProcessor(sourceSets.main.get().output)
   testImplementation(mn.micronaut.test.junit5)
   testImplementation(mn.micronaut.security)
+  testImplementation(mn.jakarta.annotation.api)
 }
