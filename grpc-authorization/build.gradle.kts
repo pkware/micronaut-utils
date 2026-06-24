@@ -1,5 +1,5 @@
 plugins {
-  `java-conventions`
+  `kotlin-conventions`
   `publish-conventions`
   alias(libs.plugins.micronaut.library)
 }
