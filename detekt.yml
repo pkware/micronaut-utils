@@ -32,6 +32,10 @@ comments:
 complexity:
   active: false
 
+empty-blocks:
+  EmptyFunctionBlock:
+    ignoreOverridden: true
+
 exceptions:
   active: true
   InstanceOfCheckForException:

@@ -194,7 +194,7 @@ internal class GrpcAuthorizationInterceptorTest {
     var capturedPrincipal: GrpcPrincipal? = null
     override fun startCall(call: ServerCall<ReqT?, RespT?>, headers: Metadata): ServerCall.Listener<ReqT?> {
       wasCalled = true
-      capturedPrincipal = current()
+      capturedPrincipal = principal()
       return object : ServerCall.Listener<ReqT?>() {}
     }
   }
