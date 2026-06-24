@@ -7,6 +7,7 @@ include(
   "assisted-inject-test-java",
   "assisted-inject-test-ksp",
   "catalog",
+  "grpc-authorization",
   "hikari-health",
   "json-moshi",
   "junit-jupiter",

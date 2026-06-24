@@ -1,1 +1,2 @@
 com.pkware.micronaut.security.grpc.SecuredAnnotationMapper
+com.pkware.micronaut.security.grpc.RolesAllowedAnnotationMapper
