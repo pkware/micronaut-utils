@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.9.0](https://github.com/pkware/micronaut-utils/compare/v0.8.0...v0.9.0) (2026-06-25)
+
+
+### Features
+
+* add grpc-authorization module for header-trust gRPC authorization ([91ba654](https://github.com/pkware/micronaut-utils/commit/91ba654a7f34799f0ee7f94fcac305d787a7f5df))
+
+
+### Bug Fixes
+
+* **deps:** update dependency no.nav.security:mock-oauth2-server to v5 ([761d32b](https://github.com/pkware/micronaut-utils/commit/761d32be68f5eb04e3e8e2988799a6c2ae4b2912))
+* Fix nullability since Micronaut 5 ([d913791](https://github.com/pkware/micronaut-utils/commit/d913791cd0f85891bef63876369430e1ef0c5a24))
+
 ## [0.8.0](https://github.com/pkware/micronaut-utils/compare/v0.7.1...v0.8.0) (2026-06-21)
 
 
