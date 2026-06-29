@@ -41,12 +41,3 @@ micronaut {
 tasks.named<JavaCompile>("compileJava") {
   options.compilerArgs.add("-proc:none")
 }
-
-// The public API of this module is entirely Kotlin; the only Java source is package-info.java,
-// which declares no public/protected types. The Java `javadoc` task (pulled in by
-// publish-conventions via withJavadocJar()) therefore fails with "No public or protected classes
-// found to document". Exclude package-info.java so the task has no Java sources to process and is
-// skipped (NO-SOURCE), producing an empty javadoc jar consistent with a Kotlin-only public API.
-tasks.named<Javadoc>("javadoc") {
-  exclude("**/package-info.java")
-}
