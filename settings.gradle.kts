@@ -32,7 +32,7 @@ pluginManagement {
 
 plugins {
   id("com.gradle.develocity") version "4.5.0"
-  id("io.micronaut.platform.catalog") version "5.0.1"
+  id("io.micronaut.platform.catalog") version "5.0.2"
 }
 
 val isCiServer = System.getenv().containsKey("CI")
