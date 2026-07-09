@@ -25,7 +25,7 @@ moshi-codegen = { module = "com.squareup.moshi:moshi-kotlin-codegen", version.re
 
 [plugins]
 kotlin-allOpen = "org.jetbrains.kotlin.plugin.allopen:2.4.0"
-ksp = "com.google.devtools.ksp:2.3.9"
+ksp = "com.google.devtools.ksp:2.3.10"
 micronaut-aot = { id = "io.micronaut.aot", version.ref = "micronautPlugin" }
 micronaut-library = { id = "io.micronaut.library", version.ref = "micronautPlugin" }
 
