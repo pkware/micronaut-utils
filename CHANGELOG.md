@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.9.1](https://github.com/pkware/micronaut-utils/compare/v0.9.0...v0.9.1) (2026-07-23)
+
+
+### Bug Fixes
+
+* **deps:** update dependency com.diffplug.spotless:spotless-plugin-gradle to v8.8.0 ([9a16689](https://github.com/pkware/micronaut-utils/commit/9a16689a06efa1316a5f9b122bf97a20520d9528))
+* **deps:** update dependency no.nav.security:mock-oauth2-server to v5.0.2 ([40eb27d](https://github.com/pkware/micronaut-utils/commit/40eb27db0e51120ade6a4b75926285c3f3c71d0a))
+* **deps:** update dependency org.junit.jupiter:junit-jupiter-params to v6.1.1 ([8d177c9](https://github.com/pkware/micronaut-utils/commit/8d177c973615dc5c2b38088b473033b629fed5f6))
+* **deps:** update dependency org.junit.jupiter:junit-jupiter-params to v6.1.2 ([8d94bab](https://github.com/pkware/micronaut-utils/commit/8d94bab8d6466692085956dcffded4f872844633))
+
 ## [0.9.0](https://github.com/pkware/micronaut-utils/compare/v0.8.0...v0.9.0) (2026-06-25)
 
 
