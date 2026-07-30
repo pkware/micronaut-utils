@@ -12,7 +12,7 @@ moshi = "1.15.2"
 assertk = "com.willowtreeapps.assertk:assertk:0.28.1"
 detekt-imports = "com.pkware.detekt:import-extension:2.1.0"
 grpc-api = { module = "io.grpc:grpc-api" }
-jspecify = "org.jspecify:jspecify:1.0.0"
+jspecify = "org.jspecify:jspecify:1.0.1"
 # Unused at runtime — exists so Renovate can track ktlint releases via Maven coordinates.
 ktlint = { module = "com.pinterest.ktlint:ktlint-cli", version.ref = "ktlint" }
 junit-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit" }
