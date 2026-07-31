@@ -22,6 +22,7 @@ mockito-junit = { module = "org.mockito:mockito-junit-jupiter", version.ref = "m
 mockito-kotlin = "org.mockito.kotlin:mockito-kotlin:6.3.0"
 moshi = { module = "com.squareup.moshi:moshi", version.ref = "moshi" }
 moshi-codegen = { module = "com.squareup.moshi:moshi-kotlin-codegen", version.ref = "moshi" }
+renovate-micronaut = { module = "io.micronaut.platform:micronaut-platform", version.ref = "micronaut" }
 
 [plugins]
 kotlin-allOpen = "org.jetbrains.kotlin.plugin.allopen:2.4.10"
