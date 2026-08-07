@@ -2,7 +2,7 @@
 junit = "6.1.3"
 ktlint = "1.8.0"
 # DO NOT DELETE - Used by the Micronaut Gradle plugin.
-micronaut = "5.0.1"
+micronaut = "5.1.0"
 # Also set in settings.gradle.kts
 micronautPlugin = "5.0.2"
 mockito = "5.23.0"
