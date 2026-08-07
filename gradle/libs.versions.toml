@@ -26,7 +26,7 @@ renovate-micronaut = { module = "io.micronaut.platform:micronaut-platform", vers
 
 [plugins]
 kotlin-allOpen = "org.jetbrains.kotlin.plugin.allopen:2.4.10"
-ksp = "com.google.devtools.ksp:2.3.10"
+ksp = "com.google.devtools.ksp:2.3.11"
 micronaut-aot = { id = "io.micronaut.aot", version.ref = "micronautPlugin" }
 micronaut-library = { id = "io.micronaut.library", version.ref = "micronautPlugin" }
 
