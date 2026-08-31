@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.9.1](https://github.com/pkware/micronaut-utils/compare/v0.9.0...v0.9.1) (2026-08-31)
+
+
+### Bug Fixes
+
+* **deps:** update dependency com.diffplug.spotless:spotless-plugin-gradle to v8.10.0 ([4b39f6c](https://github.com/pkware/micronaut-utils/commit/4b39f6c9a7935c30319e81b4ec3fdfe364e677ae))
+* **deps:** update dependency com.diffplug.spotless:spotless-plugin-gradle to v8.10.1 ([3aba13f](https://github.com/pkware/micronaut-utils/commit/3aba13f45242efb5f9e367ad8647294b1c947177))
+* **deps:** update dependency com.diffplug.spotless:spotless-plugin-gradle to v8.8.0 ([9a16689](https://github.com/pkware/micronaut-utils/commit/9a16689a06efa1316a5f9b122bf97a20520d9528))
+* **deps:** update dependency com.diffplug.spotless:spotless-plugin-gradle to v8.9.0 ([1eadd09](https://github.com/pkware/micronaut-utils/commit/1eadd09b202414d37cf3e618ddc8b3175221d1e4))
+* **deps:** update dependency dev.detekt:dev.detekt.gradle.plugin to v2.0.0-alpha.6 ([af4b522](https://github.com/pkware/micronaut-utils/commit/af4b522bd93892377f052d13d1fbc8768beac372))
+* **deps:** update dependency io.micronaut.platform:micronaut-platform to v5.1.0 ([02a45dc](https://github.com/pkware/micronaut-utils/commit/02a45dcb6347116aea14fb5965c4e15bce768ba7))
+* **deps:** update dependency io.micronaut.platform:micronaut-platform to v5.1.1 ([75bc557](https://github.com/pkware/micronaut-utils/commit/75bc5575050b91603eb8fa60046cd49ffca6a92b))
+* **deps:** update dependency io.micronaut.platform:micronaut-platform to v5.1.2 ([cf84064](https://github.com/pkware/micronaut-utils/commit/cf84064932f7efe9171a2fc93309fbcd6ab46b37))
+* **deps:** update dependency io.micronaut.platform:micronaut-platform to v5.1.3 ([f0646e0](https://github.com/pkware/micronaut-utils/commit/f0646e0ab38fb5d534f10ac869e09c2889523ca6))
+* **deps:** update dependency no.nav.security:mock-oauth2-server to v5.0.2 ([40eb27d](https://github.com/pkware/micronaut-utils/commit/40eb27db0e51120ade6a4b75926285c3f3c71d0a))
+* **deps:** update dependency no.nav.security:mock-oauth2-server to v6 ([8bc2544](https://github.com/pkware/micronaut-utils/commit/8bc25447399cca08e87d4896ed7bccf2307c4700))
+* **deps:** update dependency no.nav.security:mock-oauth2-server to v6.0.2 ([9a1fac3](https://github.com/pkware/micronaut-utils/commit/9a1fac32d6f90177b3c2f40a4a8643c3afb819bb))
+* **deps:** update dependency org.jspecify:jspecify to v1.0.1 ([d50dc4c](https://github.com/pkware/micronaut-utils/commit/d50dc4cc2acf07680d471b162dbbedbc6219abab))
+* **deps:** update dependency org.junit.jupiter:junit-jupiter-params to v6.1.1 ([8d177c9](https://github.com/pkware/micronaut-utils/commit/8d177c973615dc5c2b38088b473033b629fed5f6))
+* **deps:** update dependency org.junit.jupiter:junit-jupiter-params to v6.1.2 ([8d94bab](https://github.com/pkware/micronaut-utils/commit/8d94bab8d6466692085956dcffded4f872844633))
+* **deps:** update dependency org.junit.jupiter:junit-jupiter-params to v6.1.3 ([ac7e212](https://github.com/pkware/micronaut-utils/commit/ac7e212775cd54373a91a7acce671c7618198daa))
+
 ## [0.9.0](https://github.com/pkware/micronaut-utils/compare/v0.8.0...v0.9.0) (2026-06-25)
 
 
