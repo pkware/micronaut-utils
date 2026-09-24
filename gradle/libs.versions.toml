@@ -5,7 +5,7 @@ ktlint = "1.8.0"
 micronaut = "5.1.5"
 # Also set in settings.gradle.kts
 micronautPlugin = "5.0.2"
-mockito = "5.23.0"
+mockito = "5.24.0"
 moshi = "1.15.2"
 
 [libraries]
