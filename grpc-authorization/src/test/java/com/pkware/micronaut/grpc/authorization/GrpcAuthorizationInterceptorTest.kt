@@ -100,6 +100,24 @@ internal class GrpcAuthorizationInterceptorTest {
   }
 
   @Test
+  fun principalHoldingOneOfSeveralRolesPasses() {
+    val call = FakeServerCall(ANY_OF_METHOD)
+    val handler = CapturingCallHandler<ByteArray?, ByteArray?>()
+    interceptor.interceptCall<ByteArray?, ByteArray?>(call, headers("svc", "deployment:admin"), handler)
+    assertThat(handler.wasCalled).isTrue()
+    assertThat(call.closedStatus).isNull()
+    assertCounter(GrpcAuthorizationMetrics.OUTCOME_SUCCESS, GrpcAuthorizationMetrics.REASON_NONE)
+  }
+
+  @Test
+  fun principalHoldingNoneOfSeveralRolesIsDenied() {
+    val call = FakeServerCall(ANY_OF_METHOD)
+    interceptor.interceptCall<ByteArray?, ByteArray?>(call, headers("svc", "wrong:scope"), FAILING_HANDLER)
+    assertThat(call.closedStatus!!.code).isEqualTo(Status.Code.PERMISSION_DENIED)
+    assertThat(call.closedStatus!!.description).isEqualTo("Insufficient scope")
+  }
+
+  @Test
   fun resolveTimerRecorded() {
     val call = FakeServerCall(SECURED_METHOD)
     interceptor.interceptCall<ByteArray?, ByteArray?>(
@@ -154,6 +172,22 @@ internal class GrpcAuthorizationInterceptorTest {
       val descriptor = ServiceDescriptor.newBuilder("test.Worker").addMethod(secured).build()
       return ServerServiceDefinition.builder(descriptor)
         .addMethod(secured, UNSUPPORTED_HANDLER)
+        .build()
+    }
+  }
+
+  @Singleton
+  internal class AnyOfService : BindableService {
+    @RolesAllowed("deployment:worker", "deployment:admin")
+    fun anyOfWork() {
+      // No-op: bean carries @RolesAllowed metadata only.
+    }
+
+    override fun bindService(): ServerServiceDefinition {
+      val anyOf = method("test.AnyOf", "anyOfWork")
+      val descriptor = ServiceDescriptor.newBuilder("test.AnyOf").addMethod(anyOf).build()
+      return ServerServiceDefinition.builder(descriptor)
+        .addMethod(anyOf, UNSUPPORTED_HANDLER)
         .build()
     }
   }
@@ -215,6 +249,7 @@ internal class GrpcAuthorizationInterceptorTest {
       ServerCallHandler<ByteArray, ByteArray> { _, _ -> throw UnsupportedOperationException() }
 
     private val SECURED_METHOD = method("test.Worker", "securedWork")
+    private val ANY_OF_METHOD = method("test.AnyOf", "anyOfWork")
     private val HEALTH_METHOD = method("grpc.health.v1.Health", "check")
     private val UNKNOWN_METHOD = method("unknown.Service", "Unknown")
 

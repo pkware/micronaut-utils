@@ -24,7 +24,8 @@ import jakarta.inject.Singleton
  *  1. Method has no required scopes ([GrpcScopeRegistry] returns `null`) →
  * [Status.PERMISSION_DENIED] "Method not allowed" (deny-by-default), regardless of credentials.
  *  1. No principal → [Status.UNAUTHENTICATED] "Authentication required".
- *  1. Principal lacks a required scope → [Status.PERMISSION_DENIED] "Insufficient scope".
+ *  1. Principal holds none of the required scopes → [Status.PERMISSION_DENIED] "Insufficient scope".
+ * Holding any one of them is enough, matching `@RolesAllowed` semantics in Micronaut HTTP.
  *  1. Otherwise → publish the principal in [PRINCIPAL] and continue.
  *
  * Ordered at [.ORDER]: gRPC [ServerInterceptor] beans are sorted by [Ordered],
@@ -74,7 +75,7 @@ public class GrpcAuthorizationInterceptor(
       return NO_OP_LISTENER as ServerCall.Listener<ReqT?>
     }
 
-    if (!principal.scopes.containsAll(required)) {
+    if (required.none { it in principal.scopes }) {
       call.close(Status.PERMISSION_DENIED.withDescription("Insufficient scope"), headers)
       recordAttempt(GrpcAuthorizationMetrics.OUTCOME_FAILED, GrpcAuthorizationMetrics.REASON_REJECTED)
       return NO_OP_LISTENER as ServerCall.Listener<ReqT?>
