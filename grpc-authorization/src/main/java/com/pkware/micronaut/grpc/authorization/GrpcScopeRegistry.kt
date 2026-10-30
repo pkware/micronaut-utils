@@ -53,8 +53,8 @@ public class GrpcScopeRegistry public constructor(
   }
 
   /**
-   * Returns the scopes required to call the given gRPC method, or `null` if the method
-   * carries no `@RolesAllowed` annotation (deny-by-default).
+   * Returns the `@RolesAllowed` scopes of the given gRPC method, or `null` if the method
+   * carries no `@RolesAllowed` annotation (deny-by-default). Any one scope permits the call.
    */
   internal fun requiredScopes(fullMethodName: String): Set<String>? = scopesByMethod[fullMethodName]
 
