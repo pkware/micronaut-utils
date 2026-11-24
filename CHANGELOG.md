@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.1](https://github.com/pkware/micronaut-utils/compare/v0.10.0...v0.10.1) (2026-11-24)
+
+
+### Bug Fixes
+
+* **deps:** update dependency com.diffplug.spotless:spotless-plugin-gradle to v8.12.0 ([f35fec1](https://github.com/pkware/micronaut-utils/commit/f35fec147a71872231a349532d665e24d4051aa0))
+* **deps:** update dependency io.micronaut.platform:micronaut-platform to v5.2.8 ([5e35491](https://github.com/pkware/micronaut-utils/commit/5e35491f28aa9efc8181189d8f80be2d7ad1f56e))
+
 ## [0.10.0](https://github.com/pkware/micronaut-utils/compare/v0.9.0...v0.10.0) (2026-11-17)
 
 
